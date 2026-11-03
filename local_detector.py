@@ -111,7 +111,7 @@ class LocalDebertaDetector:
         Analyze text using local GPU model.
         For documents longer than chunk_size words, breaks into overlapping chunks and computes aggregate probability.
         """
-        service_name = "Local Desklib DeBERTa (RTX 5070 Ti / CUDA)"
+        service_name = "Local Desklib DeBERTa (ZeroGPU / A10G)" if os.environ.get("SPACE_ID") else "Local Desklib DeBERTa (RTX 5070 Ti / CUDA)"
         start_time = time.time()
         clean_text = text.strip()
         if not clean_text:
@@ -181,9 +181,10 @@ class LocalDebertaDetector:
 _GLOBAL_DETECTOR: Optional[LocalDebertaDetector] = None
 
 def is_local_available() -> bool:
-    """Check if local DeBERTa model weights are present in local Hugging Face cache."""
+    """Check if local DeBERTa model weights are present in local Hugging Face cache or running on HF Space."""
     try:
-        import torch
+        if os.environ.get("SPACE_ID"):
+            return True
         from huggingface_hub import try_to_load_from_cache
         filepath = try_to_load_from_cache("desklib/ai-text-detector-v1.01", "config.json")
         return filepath is not None

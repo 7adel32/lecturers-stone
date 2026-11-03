@@ -554,6 +554,13 @@ def format_metadata_html(meta: dict) -> str:
     """
 
 
+@spaces.GPU(duration=15)
+def _run_zerogpu_analysis(content: str, services: list):
+    return hub.analyze_text(content, services=services)
+
+def _run_cpu_analysis(content: str, services: list):
+    return hub.analyze_text(content, services=services)
+
 def analyze_input(text_input, file_input, services_selected):
     meta_info = None
     if file_input is not None:
@@ -580,7 +587,14 @@ def analyze_input(text_input, file_input, services_selected):
             ""
         )
 
-    results = hub.analyze_text(content, services=services_selected)
+    import os
+    is_hf = bool(os.environ.get("SPACE_ID"))
+    use_gpu = is_hf and ("local_deberta" in (services_selected or []))
+
+    if use_gpu:
+        results = _run_zerogpu_analysis(content, services=services_selected)
+    else:
+        results = _run_cpu_analysis(content, services=services_selected)
 
     consensus_pct = results["consensus_percentage"]
     verdict = results["verdict"]
@@ -645,6 +659,7 @@ def analyze_input(text_input, file_input, services_selected):
 
     name_map = {
         "Local Desklib DeBERTa (RTX 5070 Ti / CUDA)": "Local Desklib DeBERTa",
+        "Local Desklib DeBERTa (ZeroGPU / A10G)": "Local Desklib DeBERTa",
         "TrustSafeAI RADAR (Adversarial Detector)": "TrustSafeAI RADAR",
         "SzegedAI (DeBERTa AI Detector)": "SzegedAI DeBERTa",
         "PirateXX RoBERTa Detector": "PirateXX RoBERTa",
@@ -766,12 +781,22 @@ def create_ui():
     </div>
     """
 
+    import os
     has_local = is_local_available()
+    is_hf = bool(os.environ.get("SPACE_ID"))
+
     service_choices = []
-    if has_local:
+    if has_local or is_hf:
         service_choices.append("local_deberta")
     service_choices.extend(["radar", "fakespot", "yugamj", "piratexx", "heuristic"])
-    service_defaults = list(service_choices)
+
+    # On Hugging Face Space: default is fast CPU-only (zero quota consumption)
+    # but local_deberta is available as an opt-in checkbox!
+    # On local PC: default includes local_deberta (runs on RTX 5070 Ti in 0.05s)
+    if is_hf:
+        service_defaults = ["radar", "fakespot", "yugamj", "piratexx", "heuristic"]
+    else:
+        service_defaults = list(service_choices)
 
     with gr.Blocks(title="The Lecturer's Stone") as demo:
         gr.HTML(header_html)
@@ -858,14 +883,9 @@ def create_ui():
             outputs=[cleaned_file_output, action_status]
         )
 
-        # ZeroGPU probe satisfies Hugging Face ZeroGPU startup scanner
-        # while keeping real document and text analysis on CPU so users never hit GPU quota limits
-        @spaces.GPU(duration=10)
-        def _zerogpu_probe():
-            return None
-
+        # Bind _run_zerogpu_analysis to hidden probe button to satisfy ZeroGPU startup scan
         _probe_btn = gr.Button("probe", visible=False)
-        _probe_btn.click(fn=_zerogpu_probe)
+        _probe_btn.click(fn=_run_zerogpu_analysis)
 
     return demo, light_theme, CUSTOM_CSS, HEAD_SCRIPT
 
