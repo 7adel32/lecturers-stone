@@ -2,7 +2,7 @@
   <img src="assets/logo_stone.png" width="180" alt="The Lecturer's Stone Logo" />
 </p>
 
-# The Lecturer's Stone [![Open in Spaces](https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-sm.svg)](https://huggingface.co/spaces/alfndly/lecturers-stone)
+# The Lecturer's Stone [![Open in Spaces](https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-sm.svg)](https://alfndly-lecturers-stone.hf.space/)
 
 AI detector, with metadata checking, and cleansing.
 
