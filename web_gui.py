@@ -44,10 +44,10 @@ CUSTOM_CSS = """
 
 /* Gradio Container styling with UI gradient glow */
 .gradio-container {
-    max-width: 1280px !important;
-    margin: 16px auto !important;
-    padding: 24px !important;
-    border-radius: 12px !important;
+    max-width: 1240px !important;
+    margin: 24px auto !important;
+    padding: 24px 32px !important;
+    border-radius: 14px !important;
     transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease !important;
 }
 
@@ -55,20 +55,24 @@ CUSTOM_CSS = """
 html:not(.dark) .gradio-container {
     box-shadow: 0 4px 25px -4px rgba(211, 53, 56, 0.09), 0 0 15px -2px rgba(255, 224, 130, 0.14) !important;
     border: 1px solid #e2e8f0 !important;
+    background-color: #ffffff !important;
+}
+
+html:not(.dark), body:not(.dark) {
     background-color: #f8fafc !important;
 }
 
 /* Dark mode styling and radiant UI gradient glow */
 .dark, [data-theme="dark"] {
     color-scheme: dark !important;
-    --body-background-fill: #090d16 !important;
+    --body-background-fill: #0a0e17 !important;
     --body-text-color: #f1f5f9 !important;
     --block-background-fill: #111726 !important;
     --block-border-color: #1e293b !important;
     --background-fill-primary: #111726 !important;
-    --background-fill-secondary: #090d16 !important;
+    --background-fill-secondary: #0a0e17 !important;
     --border-color-primary: #1e293b !important;
-    background-color: #090d16 !important;
+    background-color: #0a0e17 !important;
     color: #f1f5f9 !important;
 
     --stone-card-bg: #111726;
@@ -83,10 +87,44 @@ html:not(.dark) .gradio-container {
     --stone-table-hover: #1a2538;
 }
 
+.dark html, .dark body {
+    background-color: #0a0e17 !important;
+}
+
 .dark .gradio-container {
     box-shadow: 0 0 50px -6px rgba(211, 53, 56, 0.38), 0 0 25px -3px rgba(255, 224, 130, 0.28) !important;
     border: 1px solid rgba(211, 53, 56, 0.35) !important;
-    background-color: #090d16 !important;
+    background-color: #0a0e17 !important;
+}
+
+/* Strip all intermediate Gradio wrappers to prevent double borders or background clashes */
+.dark .gradio-container .contain,
+.dark .gradio-container.gradio-container-6-30-0 .contain,
+.gradio-container .contain,
+.gradio-container .wrap,
+.gradio-container .main,
+.gradio-container .app,
+.gradio-container > .main,
+.gradio-container .main.app,
+.gradio-container main.contain {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.gradio-container .block:has(> .html-container),
+.block.hide-container,
+.gradio-container .prose {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
 }
 
 /* Hide standard theme toggles in footer / settings */
@@ -114,13 +152,13 @@ button.primary:active, .gradio-container button.primary:active {
     transform: translateY(0) !important;
 }
 
-/* Interactive Stone Logo Button */
+/* Interactive Stone Logo Secret Button */
 #stone-toggle-wrap {
     cursor: pointer;
     user-select: none;
     display: flex;
-    flex-direction: column;
     align-items: center;
+    justify-content: center;
     transition: transform 0.25s ease;
 }
 
@@ -131,25 +169,6 @@ button.primary:active, .gradio-container button.primary:active {
 
 #stone-toggle-wrap:active #stone-img {
     transform: scale(0.95);
-}
-
-.stone-pill {
-    margin-top: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 12px;
-    background: rgba(211, 53, 56, 0.1);
-    color: #d33538;
-    border: 1px solid rgba(211, 53, 56, 0.25);
-    letter-spacing: 0.02em;
-    transition: all 0.2s ease;
-}
-
-.dark .stone-pill {
-    background: rgba(255, 224, 130, 0.12);
-    color: #ffe082;
-    border-color: rgba(255, 224, 130, 0.3);
 }
 
 /* Accent Header Subtitle Gradient */
@@ -298,6 +317,8 @@ button.primary:active, .gradio-container button.primary:active {
 HEAD_SCRIPT = """
 <script>
     (function() {
+        const mediaQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
         function applyStoneTheme(theme) {
             const isDark = theme === 'dark';
             if (isDark) {
@@ -309,10 +330,6 @@ HEAD_SCRIPT = """
                 document.body.classList.remove('dark');
                 document.documentElement.setAttribute('data-theme', 'light');
             }
-            const pill = document.querySelector('.stone-pill');
-            if (pill) {
-                pill.textContent = isDark ? 'Click stone for light mode' : 'Click stone for dark mode';
-            }
             try {
                 localStorage.setItem('lecturers_stone_theme', theme);
                 localStorage.setItem('color-theme', theme);
@@ -323,18 +340,43 @@ HEAD_SCRIPT = """
         window.toggleStoneTheme = function() {
             const currentlyDark = document.documentElement.classList.contains('dark') || document.body.classList.contains('dark');
             const targetTheme = currentlyDark ? 'light' : 'dark';
+            try {
+                localStorage.setItem('lecturers_stone_manual_override', 'true');
+            } catch (e) {}
             applyStoneTheme(targetTheme);
         };
 
-        function initTheme() {
+        function getPreferredTheme() {
             try {
-                const saved = localStorage.getItem('lecturers_stone_theme') || localStorage.getItem('color-theme');
-                if (saved === 'dark') {
-                    applyStoneTheme('dark');
-                } else if (saved === 'light') {
-                    applyStoneTheme('light');
+                const manual = localStorage.getItem('lecturers_stone_manual_override');
+                const saved = localStorage.getItem('lecturers_stone_theme');
+                if (manual === 'true' && (saved === 'dark' || saved === 'light')) {
+                    return saved;
                 }
             } catch (e) {}
+
+            // Listen to browser preferred color scheme
+            if (mediaQuery && mediaQuery.matches) {
+                return 'dark';
+            }
+            return 'light';
+        }
+
+        function initTheme() {
+            const initialTheme = getPreferredTheme();
+            applyStoneTheme(initialTheme);
+
+            // Listen to dynamic changes from the browser
+            if (mediaQuery) {
+                mediaQuery.addEventListener('change', function(e) {
+                    try {
+                        const manual = localStorage.getItem('lecturers_stone_manual_override');
+                        if (manual !== 'true') {
+                            applyStoneTheme(e.matches ? 'dark' : 'light');
+                        }
+                    } catch (err) {}
+                });
+            }
         }
 
         if (document.readyState === 'loading') {
@@ -603,9 +645,8 @@ def create_ui():
             <div class="stone-subtitle">Multi-Service AI Content Detection, Container Metadata Forensics, and Cleanser</div>
             <div style="font-size: 13px; color: var(--stone-text-muted); margin-top: 4px;">Evaluates both text authorship probability across independent models and container <b>metadata forensics</b> (.docx, .xlsx, .pptx, .pdf).</div>
         </div>
-        <div id="stone-toggle-wrap" onclick="window.toggleStoneTheme && window.toggleStoneTheme()" title="Click the Stone to toggle Dark / Light mode">
+        <div id="stone-toggle-wrap" onclick="window.toggleStoneTheme && window.toggleStoneTheme()" style="flex-shrink: 0; margin-left: 20px; cursor: pointer; user-select: none;">
             {logo_html}
-            <span class="stone-pill">Click stone for dark mode</span>
         </div>
     </div>
     """
