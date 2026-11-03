@@ -22,6 +22,14 @@ if __name__ == "__main__":
         import cli
         cli.main()
     else:
+        import os
         import web_gui
-        demo = web_gui.create_ui()
-        demo.launch(server_name="127.0.0.1", server_port=7865)
+        demo, theme, css, head = web_gui.create_ui()
+        favicon = web_gui.current_dir / "assets" / "icon.ico"
+        fav_path = str(favicon) if favicon.is_file() else None
+
+        is_hf = bool(os.environ.get("SPACE_ID"))
+        if is_hf:
+            demo.launch(theme=theme, css=css, head=head, favicon_path=fav_path)
+        else:
+            demo.launch(server_name="127.0.0.1", server_port=7865, theme=theme, css=css, head=head, favicon_path=fav_path)

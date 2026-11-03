@@ -216,8 +216,85 @@ button.primary:active, .gradio-container button.primary:active {
     transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease !important;
 }
 
-.dark .verdict-card, .dark .metadata-card {
+.dark .verdict-card {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: 1px solid rgba(211, 53, 56, 0.35) !important;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 16px -4px rgba(211, 53, 56, 0.2) !important;
+}
+
+.dark .metadata-card {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: 1px solid #1e293b !important;
     box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 16px -4px rgba(211, 53, 56, 0.18) !important;
+}
+
+/* Transparent verdict badges */
+.verdict-badge, .risk-badge, .service-badge {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+
+/* Processing and loading indicators in Philosopher's Stone orange */
+:root, .dark, [data-theme="dark"] {
+    --loader-color: #f97316 !important;
+    --color-accent: #f97316 !important;
+    --color-accent-soft: rgba(249, 115, 22, 0.2) !important;
+    --loading-indicator-color: #f97316 !important;
+}
+
+.loading,
+.loader,
+.loading-indicator,
+.loading-spinner,
+.spinner,
+.spinner-button,
+.loading-overlay,
+.node-status-spinner,
+.loading-dot {
+    color: #f97316 !important;
+    border-top-color: #f97316 !important;
+    fill: #f97316 !important;
+    stroke: #f97316 !important;
+}
+
+.loading svg,
+.loader svg,
+.loading-spinner svg,
+.spinner svg,
+.animate-spin {
+    color: #f97316 !important;
+    fill: #f97316 !important;
+    stroke: #f97316 !important;
+}
+
+.loading svg circle,
+.loader svg circle,
+.animate-spin circle {
+    stroke: #f97316 !important;
+}
+
+.loading svg path,
+.loader svg path,
+.animate-spin path {
+    fill: #f97316 !important;
+}
+
+.progress-bar,
+progress,
+progress::-webkit-progress-value,
+progress::-moz-progress-bar,
+.progress-bar-wrap .progress-bar {
+    background-color: #f97316 !important;
+    background: linear-gradient(90deg, #ea580c 0%, #f97316 50%, #ffe082 100%) !important;
+}
+
+.progress-text,
+.loading-text,
+.meta-text {
+    color: #f97316 !important;
+    font-weight: 600 !important;
 }
 
 /* Override Gradio built-in prose black borders on tables and cells */
@@ -435,7 +512,7 @@ def format_metadata_html(meta: dict) -> str:
     <div class="metadata-card" style="padding: 18px; margin-bottom: 14px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--stone-divider); padding-bottom: 8px;">
             <span style="font-weight: 700; font-size: 15px; color: var(--stone-text-main);">Metadata Forensics & Container Environment</span>
-            <span style="background-color: {badge_bg}; color: {risk_color}; border: 1px solid {badge_border}; padding: 3px 10px; border-radius: 6px; font-weight: 600; font-size: 12px;">
+            <span class="risk-badge" style="background: transparent !important; background-color: transparent !important; color: {risk_color}; border: 1.5px solid {risk_color}; padding: 3px 10px; border-radius: 6px; font-weight: 600; font-size: 12px;">
                 {risk}: {meta.get('verdict')}
             </span>
         </div>
@@ -521,7 +598,7 @@ def analyze_input(text_input, file_input, services_selected):
     <div class="verdict-card" style="padding: 20px; margin-bottom: 14px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <span style="font-size: 13.5px; color: var(--stone-text-muted);">Source: <b style="color: var(--stone-text-main);">{source_desc}</b> ({results['document_stats']['words']} words, {results['document_stats']['characters']} chars)</span>
-            <span style="background-color: {badge_bg}; color: {badge_color}; border: 1px solid {badge_color}; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 12.5px;">
+            <span class="verdict-badge" style="background: transparent !important; background-color: transparent !important; color: {badge_color}; border: 1.5px solid {badge_color}; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 12.5px;">
                 {verdict}
             </span>
         </div>
@@ -549,10 +626,10 @@ def analyze_input(text_input, file_input, services_selected):
         lat = s.get("latency_sec", 0.0)
         label = s.get("label", "Unknown")
 
-        # Exclude empty/none and non-running services
-        if status == "success" and prob is not None and label not in ["Empty Input", "Empty / None", "Empty", "None", "No Extractable Text"]:
+        # Exclude empty/none, insufficient text, and non-running services
+        if status == "success" and prob is not None and label not in ["Empty Input", "Empty / None", "Empty", "None", "No Extractable Text", "Insufficient Text", "Insufficient Text (< 10 words)"]:
             pct_val = f"{prob * 100:.1f}%"
-            badge = f"<span style='background-color: {'#fee2e2' if prob >= 0.5 else '#dcfce7'}; color: {'#dc2626' if prob >= 0.5 else '#16a34a'}; border: 1px solid {'#fca5a5' if prob >= 0.5 else '#86efac'}; padding: 2px 8px; border-radius: 6px; font-weight: 600; font-size: 11.5px; display: inline-block;'>{label}</span>"
+            badge = f"<span class='service-badge' style='background: transparent !important; background-color: transparent !important; color: {'#ef4444' if prob >= 0.5 else '#22c55e'}; border: 1px solid {'#ef4444' if prob >= 0.5 else '#22c55e'}; padding: 2px 8px; border-radius: 6px; font-weight: 600; font-size: 11.5px; display: inline-block;'>{label}</span>"
 
             table_rows.append(f"""
             <tr>
@@ -747,5 +824,13 @@ def create_ui():
 
 
 if __name__ == "__main__":
+    import os
     demo, theme, css, head = create_ui()
-    demo.launch(server_name="127.0.0.1", server_port=7865, theme=theme, css=css, head=head)
+    favicon = current_dir / "assets" / "icon.ico"
+    fav_path = str(favicon) if favicon.is_file() else None
+
+    is_hf = bool(os.environ.get("SPACE_ID"))
+    if is_hf:
+        demo.launch(theme=theme, css=css, head=head, favicon_path=fav_path)
+    else:
+        demo.launch(server_name="127.0.0.1", server_port=7865, theme=theme, css=css, head=head, favicon_path=fav_path)

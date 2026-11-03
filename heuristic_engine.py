@@ -49,9 +49,9 @@ def analyze_heuristic(text: str) -> Dict[str, Any]:
     if total_words < 10:
         return {
             "service_name": "Heuristic & Burstiness Engine",
-            "ai_probability": 0.20,
-            "status": "success",
-            "label": "Insufficient Text (< 10 words)",
+            "ai_probability": None,
+            "status": "insufficient",
+            "label": "Insufficient Text",
             "metrics": {"word_count": total_words}
         }
 

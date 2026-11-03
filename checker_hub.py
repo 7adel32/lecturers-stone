@@ -290,7 +290,7 @@ class AICheckerHub:
             r for r in results
             if r.get("ai_probability") is not None
             and r.get("status") == "success"
-            and r.get("label") not in ["Empty Input", "Empty / None", "Empty", "None", "No Extractable Text"]
+            and r.get("label") not in ["Empty Input", "Empty / None", "Empty", "None", "No Extractable Text", "Insufficient Text", "Insufficient Text (< 10 words)"]
         ]
         valid_scores = [r["ai_probability"] for r in valid_results]
 
