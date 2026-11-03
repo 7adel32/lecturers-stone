@@ -38,9 +38,9 @@ def analyze_heuristic(text: str) -> Dict[str, Any]:
     if not clean_text:
         return {
             "service_name": "Heuristic & Burstiness Engine",
-            "ai_probability": 0.0,
-            "status": "success",
-            "label": "Empty / None",
+            "ai_probability": None,
+            "status": "empty",
+            "label": "Empty Input",
             "metrics": {}
         }
 

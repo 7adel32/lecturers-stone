@@ -104,9 +104,9 @@ class LocalDebertaDetector:
         if not clean_text:
             return {
                 "service_name": service_name,
-                "ai_probability": 0.0,
+                "ai_probability": None,
                 "label": "Empty Input",
-                "status": "success",
+                "status": "empty",
                 "latency_sec": 0.0,
                 "metrics": {"device": str(self.device)}
             }
@@ -166,6 +166,17 @@ class LocalDebertaDetector:
 
 # Singleton accessor
 _GLOBAL_DETECTOR: Optional[LocalDebertaDetector] = None
+
+def is_local_available() -> bool:
+    """Check if local DeBERTa model weights are present in local Hugging Face cache."""
+    try:
+        import torch
+        from huggingface_hub import try_to_load_from_cache
+        filepath = try_to_load_from_cache("desklib/ai-text-detector-v1.01", "config.json")
+        return filepath is not None
+    except Exception:
+        return False
+
 
 def get_local_detector() -> LocalDebertaDetector:
     global _GLOBAL_DETECTOR

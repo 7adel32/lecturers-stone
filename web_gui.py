@@ -4,6 +4,7 @@ Default operation evaluates both AI text authorship across multiple detection mo
 and container metadata forensics (.docx, .xlsx, .pptx, .pdf).
 """
 
+import base64
 import html
 import sys
 from pathlib import Path
@@ -16,6 +17,7 @@ if str(current_dir) not in sys.path:
 from checker_hub import AICheckerHub
 from document_parser import extract_text_from_file
 from metadata_forensics import inspect_metadata, sanitize_metadata, super_sanitize_metadata, DEFAULT_AUTHOR
+from local_detector import is_local_available
 
 hub = AICheckerHub()
 
@@ -23,6 +25,27 @@ CUSTOM_CSS = """
 /* Global unified 8px radius across interactive components */
 .gradio-container, .block, .panel, .form, input, textarea, button, select {
     border-radius: 8px !important;
+}
+
+/* Force light theme and completely disable dark mode */
+:root, html, body {
+    color-scheme: light !important;
+}
+
+.dark, [data-theme="dark"] {
+    --body-background-fill: #f8fafc !important;
+    --body-text-color: #0f172a !important;
+    --block-background-fill: #ffffff !important;
+    --block-border-color: #e2e8f0 !important;
+    --background-fill-primary: #ffffff !important;
+    --background-fill-secondary: #f8fafc !important;
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+}
+
+/* Hide theme toggles in footer / settings */
+footer, .settings-btn, button[aria-label="Toggle theme"], button:has(.settings), .settings {
+    display: none !important;
 }
 
 /* Eliminate double container borders on custom HTML card blocks */
@@ -95,6 +118,18 @@ CUSTOM_CSS = """
 .service-table-card tr:hover td {
     background-color: #f8fafc !important;
 }
+"""
+
+HEAD_SCRIPT = """
+<script>
+    document.documentElement.classList.remove('dark');
+    const observer = new MutationObserver(() => {
+        if (document.documentElement.classList.contains('dark')) {
+            document.documentElement.classList.remove('dark');
+        }
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+</script>
 """
 
 
@@ -181,7 +216,6 @@ def analyze_input(text_input, file_input, services_selected, sapling_key):
             return (
                 f"<div style='color:#dc2626; font-weight:bold;'>Error reading file: {e}</div>",
                 "",
-                {},
                 "",
                 ""
             )
@@ -192,7 +226,6 @@ def analyze_input(text_input, file_input, services_selected, sapling_key):
         return (
             "<div style='color:#d97706; font-weight:bold;'>Please enter text or upload a document (.docx, .xlsx, .pptx, .pdf, .txt).</div>",
             "",
-            {},
             "",
             ""
         )
@@ -206,18 +239,30 @@ def analyze_input(text_input, file_input, services_selected, sapling_key):
     human_votes = results["votes"]["human"]
     total_valid = results["votes"]["total_valid_services"]
 
-    if consensus_pct >= 70:
-        badge_color = "#dc2626"
-        badge_bg = "#fee2e2"
-    elif consensus_pct >= 50:
-        badge_color = "#ea580c"
-        badge_bg = "#ffedd5"
-    elif consensus_pct >= 35:
-        badge_color = "#ca8a04"
-        badge_bg = "#fef9c3"
+    if total_valid == 0:
+        badge_color = "#64748b"
+        badge_bg = "#f1f5f9"
+        pct_display = "N/A"
+        progress_width = 0
+        consensus_summary = "No active text classifiers evaluated (0 extractable words)"
+        spread_summary = "N/A"
     else:
-        badge_color = "#16a34a"
-        badge_bg = "#dcfce7"
+        if consensus_pct >= 70:
+            badge_color = "#dc2626"
+            badge_bg = "#fee2e2"
+        elif consensus_pct >= 50:
+            badge_color = "#ea580c"
+            badge_bg = "#ffedd5"
+        elif consensus_pct >= 35:
+            badge_color = "#ca8a04"
+            badge_bg = "#fef9c3"
+        else:
+            badge_color = "#16a34a"
+            badge_bg = "#dcfce7"
+        pct_display = f"{consensus_pct}%"
+        progress_width = consensus_pct
+        consensus_summary = f"Consensus: <b style='color: #0f172a;'>{ai_votes} AI</b> vs <b style='color: #0f172a;'>{human_votes} Human</b> (out of {total_valid} engines)"
+        spread_summary = f"Spread: <b style='color: #0f172a;'>{results['score_spread']['min']*100:.1f}%</b> - <b style='color: #0f172a;'>{results['score_spread']['max']*100:.1f}%</b>"
 
     verdict_html = f"""
     <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; color: #0f172a; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
@@ -228,22 +273,21 @@ def analyze_input(text_input, file_input, services_selected, sapling_key):
             </span>
         </div>
         <div style="display: flex; align-items: baseline; gap: 12px;">
-            <h2 style="margin: 0; font-size: 38px; font-weight: 800; color: {badge_color};">{consensus_pct}%</h2>
+            <h2 style="margin: 0; font-size: 38px; font-weight: 800; color: {badge_color};">{pct_display}</h2>
             <span style="font-size: 16px; color: #475569; font-weight: 500;">Consensus AI Probability</span>
         </div>
         <div style="margin-top: 12px; background: #f1f5f9; border-radius: 6px; height: 10px; overflow: hidden; border: 1px solid #e2e8f0;">
-            <div style="background: {badge_color}; height: 100%; width: {consensus_pct}%; border-radius: 5px;"></div>
+            <div style="background: {badge_color}; height: 100%; width: {progress_width}%; border-radius: 5px;"></div>
         </div>
         <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12.5px; color: #64748b;">
-            <span>Consensus: <b style="color: #0f172a;">{ai_votes} AI</b> vs <b style="color: #0f172a;">{human_votes} Human</b> (out of {total_valid} engines)</span>
-            <span>Spread: <b style="color: #0f172a;">{results['score_spread']['min']*100:.1f}%</b> - <b style="color: #0f172a;">{results['score_spread']['max']*100:.1f}%</b></span>
+            <span>{consensus_summary}</span>
+            <span>{spread_summary}</span>
         </div>
     </div>
     """
 
     meta_html = format_metadata_html(meta_info)
 
-    service_scores = {}
     table_rows = []
     for s in results["services"]:
         s_name = s.get("service_name")
@@ -252,9 +296,8 @@ def analyze_input(text_input, file_input, services_selected, sapling_key):
         lat = s.get("latency_sec", 0.0)
         label = s.get("label", "Unknown")
 
-        # Only display classifiers that successfully executed and produced a probability score
-        if status == "success" and prob is not None:
-            service_scores[s_name] = prob
+        # Exclude empty/none and non-running services
+        if status == "success" and prob is not None and label not in ["Empty Input", "Empty / None", "Empty", "None", "No Extractable Text"]:
             pct_val = f"{prob * 100:.1f}%"
             badge = f"<span style='background-color: {'#fee2e2' if prob >= 0.5 else '#dcfce7'}; color: {'#dc2626' if prob >= 0.5 else '#16a34a'}; border: 1px solid {'#fca5a5' if prob >= 0.5 else '#86efac'}; padding: 2px 8px; border-radius: 6px; font-weight: 600; font-size: 11.5px; display: inline-block;'>{label}</span>"
 
@@ -299,7 +342,7 @@ def analyze_input(text_input, file_input, services_selected, sapling_key):
         """
 
     preview_text = content[:1000] + ("..." if len(content) > 1000 else "")
-    return verdict_html, meta_html, service_scores, table_html, preview_text
+    return verdict_html, meta_html, table_html, preview_text
 
 
 def sanitize_action(file_input, author_name):
@@ -341,17 +384,38 @@ def create_ui():
         table_radius="8px"
     )
 
-    with gr.Blocks(title="The Lecturer's Stone", theme=light_theme, css=CUSTOM_CSS) as demo:
-        gr.Markdown(
-            """
-            # The Lecturer's Stone
-            ### Multi-Service AI Content Detection, Container Metadata Forensics, and Sanitizer
-            Evaluates both text authorship probability across independent models and container **metadata forensics** (.docx, .xlsx, .pptx, .pdf).
-            """
-        )
+    logo_path = current_dir / "assets" / "logo.png"
+    if logo_path.is_file():
+        logo_b64 = base64.b64encode(logo_path.read_bytes()).decode("utf-8")
+        logo_html = f'<img src="data:image/png;base64,{logo_b64}" alt="Logo" style="height: 68px; width: auto; object-fit: contain; border-radius: 8px;" />'
+    else:
+        logo_html = ""
+
+    header_html = f"""
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #e2e8f0;">
+        <div>
+            <h1 style="margin: 0; font-size: 28px; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">The Lecturer's Stone</h1>
+            <div style="font-size: 14.5px; font-weight: 600; color: #2563eb; margin-top: 4px;">Multi-Service AI Content Detection, Container Metadata Forensics, and Sanitizer</div>
+            <div style="font-size: 13px; color: #64748b; margin-top: 4px;">Evaluates both text authorship probability across independent models and container <b>metadata forensics</b> (.docx, .xlsx, .pptx, .pdf).</div>
+        </div>
+        <div style="flex-shrink: 0; margin-left: 20px;">
+            {logo_html}
+        </div>
+    </div>
+    """
+
+    has_local = is_local_available()
+    service_choices = []
+    if has_local:
+        service_choices.append("local_deberta")
+    service_choices.extend(["radar", "fakespot", "yugamj", "piratexx", "heuristic", "sapling"])
+    service_defaults = [s for s in service_choices if s != "sapling"]
+
+    with gr.Blocks(title="The Lecturer's Stone", theme=light_theme, css=CUSTOM_CSS, head=HEAD_SCRIPT) as demo:
+        gr.HTML(header_html)
 
         with gr.Row():
-            with gr.Column(scale=5):
+            with gr.Column(scale=1):
                 file_input = gr.File(
                     label="Upload Document (.docx, .xlsx, .pptx, .pdf, .txt, .md)",
                     file_types=[".docx", ".xlsx", ".xlsm", ".pptx", ".pdf", ".txt", ".md"],
@@ -366,7 +430,8 @@ def create_ui():
                 with gr.Accordion("Sanitize & Metadata Tools", open=False):
                     author_name_input = gr.Textbox(
                         label="Author Name for Sanitization",
-                        value=DEFAULT_AUTHOR
+                        value=DEFAULT_AUTHOR,
+                        placeholder="e.g. Author or Student"
                     )
                     with gr.Row():
                         sanitize_btn = gr.Button("Sanitize Metadata (Preserve Date)", variant="secondary")
@@ -376,8 +441,8 @@ def create_ui():
 
                 with gr.Accordion("Engine Selection & Settings", open=False):
                     services_checkbox = gr.CheckboxGroup(
-                        choices=["local_deberta", "radar", "fakespot", "yugamj", "piratexx", "heuristic", "sapling"],
-                        value=["local_deberta", "radar", "fakespot", "yugamj", "piratexx", "heuristic"],
+                        choices=service_choices,
+                        value=service_defaults,
                         label="Active Detection Services"
                     )
                     sapling_key_input = gr.Textbox(
@@ -388,21 +453,52 @@ def create_ui():
 
                 with gr.Row():
                     check_btn = gr.Button("Analyze AI & Metadata", variant="primary", size="lg")
-                    clear_btn = gr.ClearButton([text_input, file_input], value="Clear Input")
+                    clear_btn = gr.Button("Clear Input", variant="secondary")
 
-            with gr.Column(scale=6):
+            with gr.Column(scale=1):
                 verdict_output = gr.HTML(show_label=False, elem_classes=["clean-html-card"])
                 meta_output = gr.HTML(show_label=False, elem_classes=["clean-html-card"])
-                scores_chart = gr.Label(label="AI Detection Probabilities by Engine", num_top_classes=6)
                 breakdown_table = gr.HTML(show_label=False, elem_classes=["clean-html-card"])
 
                 with gr.Accordion("Extracted Document Content Preview", open=False):
                     text_preview = gr.Textbox(label="Extracted Text", lines=6, interactive=False)
 
+        def handle_file_change(file):
+            if file is not None:
+                return gr.update(interactive=False, placeholder="File uploaded. Text input is disabled while document is loaded. Click 'Clear Input' to type text.")
+            return gr.update(interactive=True, placeholder="Paste an essay, article, paragraph, or sentence to evaluate for AI authorship...")
+
+        def handle_clear():
+            return (
+                None,
+                "",
+                gr.update(interactive=True, placeholder="Paste an essay, article, paragraph, or sentence to evaluate for AI authorship..."),
+                "",
+                "",
+                "",
+                ""
+            )
+
+        file_input.change(
+            fn=handle_file_change,
+            inputs=[file_input],
+            outputs=[text_input]
+        )
+
+        file_input.clear(
+            fn=lambda: gr.update(interactive=True, placeholder="Paste an essay, article, paragraph, or sentence to evaluate for AI authorship..."),
+            outputs=[text_input]
+        )
+
+        clear_btn.click(
+            fn=handle_clear,
+            outputs=[file_input, text_input, text_input, verdict_output, meta_output, breakdown_table, text_preview]
+        )
+
         check_btn.click(
             fn=analyze_input,
             inputs=[text_input, file_input, services_checkbox, sapling_key_input],
-            outputs=[verdict_output, meta_output, scores_chart, breakdown_table, text_preview]
+            outputs=[verdict_output, meta_output, breakdown_table, text_preview]
         )
 
         sanitize_btn.click(

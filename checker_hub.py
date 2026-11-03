@@ -266,6 +266,31 @@ class AICheckerHub:
             }
 
     def analyze_text(self, text: str, services: List[str] = None) -> Dict[str, Any]:
+        word_count = len(text.split())
+        char_count = len(text)
+
+        if word_count == 0:
+            return {
+                "verdict": "No Extractable Text",
+                "consensus_ai_probability": None,
+                "consensus_percentage": 0.0,
+                "votes": {
+                    "ai": 0,
+                    "human": 0,
+                    "total_valid_services": 0
+                },
+                "score_spread": {
+                    "min": 0.0,
+                    "max": 0.0,
+                    "range": 0.0
+                },
+                "document_stats": {
+                    "words": 0,
+                    "characters": 0,
+                },
+                "services": []
+            }
+
         all_runners = {
             "local_deberta": self.check_local_deberta,
             "radar": self.check_radar,
@@ -299,7 +324,14 @@ class AICheckerHub:
                         "latency_sec": 0.0
                     })
 
-        valid_scores = [r["ai_probability"] for r in results if r.get("ai_probability") is not None and r.get("status") == "success"]
+        # Exclude empty, none, or non-successful evaluations from consensus
+        valid_results = [
+            r for r in results
+            if r.get("ai_probability") is not None
+            and r.get("status") == "success"
+            and r.get("label") not in ["Empty Input", "Empty / None", "Empty", "None", "No Extractable Text"]
+        ]
+        valid_scores = [r["ai_probability"] for r in valid_results]
 
         if valid_scores:
             avg_prob = sum(valid_scores) / len(valid_scores)
@@ -317,20 +349,17 @@ class AICheckerHub:
             else:
                 verdict = "Likely Human-Written"
         else:
-            avg_prob = 0.0
+            avg_prob = None
             min_prob = 0.0
             max_prob = 0.0
             ai_votes = 0
             human_votes = 0
             verdict = "No active service succeeded"
 
-        word_count = len(text.split())
-        char_count = len(text)
-
         return {
             "verdict": verdict,
-            "consensus_ai_probability": round(avg_prob, 4),
-            "consensus_percentage": round(avg_prob * 100.0, 2),
+            "consensus_ai_probability": round(avg_prob, 4) if avg_prob is not None else None,
+            "consensus_percentage": round(avg_prob * 100.0, 2) if avg_prob is not None else 0.0,
             "votes": {
                 "ai": ai_votes,
                 "human": human_votes,
