@@ -11,16 +11,32 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          lfs: true
 
-      - name: Push to Hugging Face Space
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install huggingface_hub
+        run: pip install --upgrade huggingface_hub
+
+      - name: Sync to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          if [ -n "$HF_TOKEN" ]; then
-            git push --force https://alfndly:$HF_TOKEN@huggingface.co/spaces/alfndly/lecturers-stone master
-          else
-            echo "HF_TOKEN secret is not set in GitHub repository settings. Skipping HF sync."
-          fi
+          python -c "
+          import os
+          from huggingface_hub import HfApi
+          token = os.environ.get('HF_TOKEN')
+          if token:
+              api = HfApi(token=token)
+              api.upload_folder(
+                  folder_path='.',
+                  repo_id='alfndly/lecturers-stone',
+                  repo_type='space',
+                  ignore_patterns=['.git', '.git/**', '.github', '.github/**', '__pycache__', '*.pyc', '.env']
+              )
+              print('Successfully synced to Hugging Face Space!')
+          else:
+              print('HF_TOKEN secret not found.')
+          "
