@@ -23,27 +23,4 @@ jobs:
       - name: Sync to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          python -c "
-          import os
-          from huggingface_hub import HfApi
-          token = os.environ.get('HF_TOKEN')
-          if token:
-              # Attach Hugging Face Space YAML frontmatter before uploading
-              with open('README.md', 'r', encoding='utf-8') as f:
-                  readme_content = f.read()
-              hf_frontmatter = "---\ntitle: The Lecturers Stone\ncolorFrom: red\ncolorTo: yellow\nsdk: gradio\napp_file: app.py\npinned: false\n---\n\n"
-              with open('README.md', 'w', encoding='utf-8') as f:
-                  f.write(hf_frontmatter + readme_content)
-
-              api = HfApi(token=token)
-              api.upload_folder(
-                  folder_path='.',
-                  repo_id='alfndly/lecturers-stone',
-                  repo_type='space',
-                  ignore_patterns=['.git', '.git/**', '.github', '.github/**', '__pycache__', '*.pyc', '.env']
-              )
-              print('Successfully synced to Hugging Face Space with Space frontmatter!')
-          else:
-              print('HF_TOKEN secret not found.')
-          "
+        run: python scripts/sync_to_space.py
