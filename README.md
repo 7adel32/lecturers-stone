@@ -45,7 +45,6 @@ The Lecturer's Stone unifies **Container Forensics** and **Multi-Service AI Cons
 - **PirateXX RoBERTa**: Multi-tier transformer detector.
 - **YugamJ LLM Detector**: Fine-tuned classification model calibrated for ChatGPT and modern LLM text.
 - **Heuristic & Burstiness Engine**: Offline statistical NLP engine measuring sentence length variance (burstiness coefficient of variation), type-token lexical diversity, and AI transition marker density.
-- **Sapling AI API** *(Optional)*: Commercial endpoint integration when `--sapling-key` is supplied.
 
 ---
 

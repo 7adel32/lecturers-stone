@@ -102,6 +102,41 @@ def _read_zip_xml(zf: zipfile.ZipFile, internal_name: str) -> Optional[ET.Elemen
     return None
 
 
+def format_datetime_human(dt_str: Optional[str]) -> str:
+    """Format machine timestamps (ISO-8601, PDF D: format, etc.) into clean human-readable date strings."""
+    if not dt_str:
+        return "N/A"
+    dt_str = str(dt_str).strip()
+    if not dt_str:
+        return "N/A"
+
+    if dt_str.startswith("D:"):
+        clean_pdf = dt_str[2:].replace("'", "")
+        try:
+            if len(clean_pdf) >= 14:
+                dt = datetime.strptime(clean_pdf[:14], "%Y%m%d%H%M%S")
+                return dt.strftime("%b %d, %Y, %I:%M %p")
+        except Exception:
+            pass
+
+    try:
+        iso_clean = dt_str.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(iso_clean)
+        tz = " UTC" if "Z" in dt_str or "+00:00" in iso_clean else ""
+        return dt.strftime("%b %d, %Y, %I:%M %p") + tz
+    except Exception:
+        pass
+
+    for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            dt = datetime.strptime(dt_str[:19], fmt)
+            return dt.strftime("%b %d, %Y, %I:%M %p")
+        except Exception:
+            continue
+
+    return dt_str
+
+
 def inspect_metadata(file_path: Union[str, Path]) -> Dict[str, Any]:
     """
     Inspect document container metadata for owner, editor, environment, and generator clues.
@@ -362,6 +397,9 @@ def _evaluate_generator_clues(result: Dict[str, Any]):
     else:
         result["risk_level"] = "STRIPPED"
         result["verdict"] = "Clean / stripped metadata (no identifying markers)"
+
+    result["created_formatted"] = format_datetime_human(result.get("created"))
+    result["modified_formatted"] = format_datetime_human(result.get("modified"))
 
 
 def sanitize_metadata(

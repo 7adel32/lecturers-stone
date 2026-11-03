@@ -8,7 +8,6 @@ Queries several online and local detection engines concurrently:
 5. PirateXX (Multi-class RoBERTa AI Detector)
 6. YugamJ LLM Detector
 7. Heuristic & Burstiness Engine (Offline statistical NLP baseline)
-8. Optional Sapling API (if API key provided)
 """
 
 import os
@@ -31,8 +30,7 @@ from metadata_forensics import inspect_metadata
 
 
 class AICheckerHub:
-    def __init__(self, sapling_api_key: Optional[str] = None, timeout: int = 15, enable_local: bool = True):
-        self.sapling_api_key = sapling_api_key or os.environ.get("SAPLING_API_KEY")
+    def __init__(self, timeout: int = 15, enable_local: bool = True):
         self.timeout = timeout
         self.enable_local = enable_local
         self.clients = {}
@@ -229,42 +227,6 @@ class AICheckerHub:
         res["latency_sec"] = round(time.time() - start_time, 4)
         return res
 
-    def check_sapling(self, text: str) -> Dict[str, Any]:
-        service_name = "Sapling AI API"
-        if not self.sapling_api_key:
-            return {
-                "service_name": service_name,
-                "ai_probability": None,
-                "label": "Skipped (No Key)",
-                "status": "skipped: No Sapling API key provided",
-                "latency_sec": 0.0
-            }
-        start_time = time.time()
-        try:
-            resp = requests.post(
-                "https://api.sapling.ai/api/v1/aidetect",
-                json={"key": self.sapling_api_key, "text": text},
-                timeout=self.timeout
-            )
-            data = resp.json()
-            score = data.get("score", 0.5)
-            return {
-                "service_name": service_name,
-                "ai_probability": round(float(score), 4),
-                "label": "AI-Generated" if score >= 0.5 else "Human-Written",
-                "status": "success",
-                "latency_sec": round(time.time() - start_time, 2),
-                "raw_response": data
-            }
-        except Exception as e:
-            return {
-                "service_name": service_name,
-                "ai_probability": None,
-                "label": "Error",
-                "status": f"error: {str(e)}",
-                "latency_sec": round(time.time() - start_time, 2)
-            }
-
     def analyze_text(self, text: str, services: List[str] = None) -> Dict[str, Any]:
         word_count = len(text.split())
         char_count = len(text)
@@ -299,7 +261,6 @@ class AICheckerHub:
             "piratexx": self.check_piratexx,
             "yugamj": self.check_yugamj,
             "heuristic": self.check_heuristic,
-            "sapling": self.check_sapling,
         }
 
         if services:

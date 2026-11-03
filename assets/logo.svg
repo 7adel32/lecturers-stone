@@ -40,26 +40,31 @@
 
     <!-- Sorcerer's Stone Gem Gradients -->
     <radialGradient id="stoneCore" cx="45%" cy="38%" r="60%">
-      <stop offset="0%" stop-color="#FFF59D" stop-opacity="0.95" />
-      <stop offset="25%" stop-color="#FF6F00" stop-opacity="0.95" />
-      <stop offset="65%" stop-color="#D50000" stop-opacity="0.92" />
-      <stop offset="90%" stop-color="#880E4F" stop-opacity="0.95" />
-      <stop offset="100%" stop-color="#4A0020" stop-opacity="1" />
+      <stop offset="0%" stop-color="#FFF59D" />
+      <stop offset="25%" stop-color="#FF6F00" />
+      <stop offset="65%" stop-color="#D50000" />
+      <stop offset="90%" stop-color="#880E4F" />
+      <stop offset="100%" stop-color="#4A0020" />
     </radialGradient>
 
+    <linearGradient id="stoneFacetLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFA000" />
+      <stop offset="100%" stop-color="#B71C1C" />
+    </linearGradient>
+
     <linearGradient id="stoneFacet1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFA000" stop-opacity="0.8" />
-      <stop offset="100%" stop-color="#C62828" stop-opacity="0.9" />
+      <stop offset="0%" stop-color="#FFA000" />
+      <stop offset="100%" stop-color="#C62828" />
     </linearGradient>
 
     <linearGradient id="stoneFacet2" x1="100%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#FFD54F" stop-opacity="0.85" />
-      <stop offset="100%" stop-color="#BF360C" stop-opacity="0.75" />
+      <stop offset="0%" stop-color="#FFD54F" />
+      <stop offset="100%" stop-color="#BF360C" />
     </linearGradient>
 
     <linearGradient id="stoneFacet3" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#5C0018" stop-opacity="0.9" />
-      <stop offset="100%" stop-color="#D84315" stop-opacity="0.85" />
+      <stop offset="0%" stop-color="#5C0018" />
+      <stop offset="100%" stop-color="#D84315" />
     </linearGradient>
 
     <!-- Glass Cloche Lighting -->
@@ -81,11 +86,8 @@
     </filter>
   </defs>
 
-  <!-- Background Base Canvas -->
-  <rect width="512" height="512" rx="36" fill="url(#bgGlow)" />
-
-  <!-- Base Table Shadow -->
-  <ellipse cx="256" cy="458" rx="205" ry="32" fill="#000000" opacity="0.75" />
+  <!-- Base Table Shadow (Soft Transparent Drop Shadow) -->
+  <ellipse cx="256" cy="458" rx="205" ry="32" fill="#000000" opacity="0.22" />
 
   <!-- ==================== WOODEN STAND & BASE ==================== -->
   <!-- Outer Dark Wood Plinth (Bottom Tier) -->
@@ -105,10 +107,11 @@
   <path d="M 96 420 L 96 196 C 96 100 168 62 256 62 C 344 62 416 100 416 196 L 416 420 Z" fill="#4FC3F7" fill-opacity="0.04" />
 
   <!-- ==================== BRASS PEDESTAL & GIMBAL ==================== -->
-  <!-- Pedestal Foot -->
-  <ellipse cx="256" cy="386" rx="42" ry="9" fill="url(#brassGradH)" stroke="#8A6D14" stroke-width="1.5" />
-  <ellipse cx="256" cy="384" rx="38" ry="7" fill="#FFE082" />
-  <path d="M 230 384 C 230 376 244 368 250 348 L 262 348 C 268 368 282 376 282 384 Z" fill="url(#brassGradH)" stroke="#8A6D14" stroke-width="1" />
+  <!-- Pedestal Foot resting firmly on the Blue Velvet Pad -->
+  <ellipse cx="256" cy="425" rx="46" ry="10" fill="#0A0E2A" opacity="0.6" />
+  <ellipse cx="256" cy="423" rx="44" ry="9" fill="url(#brassGradH)" stroke="#8A6D14" stroke-width="1.5" />
+  <ellipse cx="256" cy="421" rx="40" ry="7" fill="#FFE082" />
+  <path d="M 224 421 C 224 395 244 372 250 348 L 262 348 C 268 372 288 395 288 421 Z" fill="url(#brassGradH)" stroke="#8A6D14" stroke-width="1" />
 
   <!-- Central Turned Baluster Ring -->
   <ellipse cx="256" cy="346" rx="16" ry="5" fill="url(#brassGradH)" stroke="#997A15" stroke-width="1" />
@@ -161,7 +164,23 @@
   <circle cx="242" cy="186" r="38" fill="#FF9100" opacity="0.55" filter="url(#gemGlow)" />
 
   <g id="sorcerersStone">
-    <!-- Main Outer Rough Gem Silhoutte -->
+    <!-- Solid Opaque Backing Under Stone (Guarantees zero transparency through the gem) -->
+    <path d="
+      M 166 198
+      L 182 162
+      L 220 142
+      L 268 140
+      L 316 156
+      L 346 194
+      L 332 232
+      L 294 250
+      L 246 256
+      L 204 246
+      L 174 228
+      Z
+    " fill="#4A0018" />
+
+    <!-- Main Outer Gem Base -->
     <path d="
       M 166 198
       L 182 162
@@ -178,23 +197,26 @@
     " fill="url(#stoneCore)" stroke="#FFD54F" stroke-width="1.2" stroke-linejoin="round" />
 
     <!-- Crystalline Facet Overlays -->
+    <!-- Far-Left Flank Facet (Covers previous un-faceted gap with deep ruby) -->
+    <path d="M 166 198 L 182 162 L 196 186 Z" fill="url(#stoneFacetLeft)" stroke="#FFA726" stroke-width="0.8" />
+
     <!-- Top-Left Facet (Bright Golden Specular) -->
-    <path d="M 182 162 L 220 142 L 238 178 L 196 186 Z" fill="url(#stoneFacet2)" opacity="0.9" stroke="#FFF59D" stroke-width="0.8" />
+    <path d="M 182 162 L 220 142 L 238 178 L 196 186 Z" fill="url(#stoneFacet2)" stroke="#FFF59D" stroke-width="0.8" />
 
     <!-- Top-Right Main Facet -->
-    <path d="M 220 142 L 268 140 L 316 156 L 278 188 L 238 178 Z" fill="url(#stoneFacet1)" opacity="0.92" stroke="#FFE082" stroke-width="0.8" />
+    <path d="M 220 142 L 268 140 L 316 156 L 278 188 L 238 178 Z" fill="url(#stoneFacet1)" stroke="#FFE082" stroke-width="0.8" />
 
     <!-- Center Heart Facet (Glowing Core) -->
-    <path d="M 238 178 L 278 188 L 272 226 L 226 218 Z" fill="#FF3D00" opacity="0.85" stroke="#FFA726" stroke-width="0.7" />
+    <path d="M 238 178 L 278 188 L 272 226 L 226 218 Z" fill="#FF3D00" stroke="#FFA726" stroke-width="0.7" />
 
     <!-- Lower Left Facet (Deep Crimson Shadow) -->
-    <path d="M 166 198 L 196 186 L 226 218 L 204 246 L 174 228 Z" fill="url(#stoneFacet3)" opacity="0.95" stroke="#E57373" stroke-width="0.7" />
+    <path d="M 166 198 L 196 186 L 226 218 L 204 246 L 174 228 Z" fill="url(#stoneFacet3)" stroke="#E57373" stroke-width="0.7" />
 
     <!-- Lower Right Facet (Ruby Core) -->
-    <path d="M 278 188 L 316 156 L 346 194 L 332 232 L 272 226 Z" fill="#C2185B" opacity="0.92" stroke="#FF80AB" stroke-width="0.7" />
+    <path d="M 278 188 L 316 156 L 346 194 L 332 232 L 272 226 Z" fill="#C2185B" stroke="#FF80AB" stroke-width="0.7" />
 
     <!-- Bottom Facet Keel -->
-    <path d="M 226 218 L 272 226 L 294 250 L 246 256 L 204 246 Z" fill="#880E4F" opacity="0.95" stroke="#FF4081" stroke-width="0.6" />
+    <path d="M 226 218 L 272 226 L 294 250 L 246 256 L 204 246 Z" fill="#880E4F" stroke="#FF4081" stroke-width="0.6" />
 
     <!-- Diamond Specular Gleam Highlight on Edge -->
     <polygon points="216,144 224,141 228,146 220,149" fill="#FFFFFF" opacity="0.95" />
@@ -205,9 +227,9 @@
   <!-- ==================== BRASS NAMEPLATE ==================== -->
   <!-- Plaque Ribbon Banner -->
   <g transform="translate(0, 10)">
-    <path d="M 184 416 L 328 416 L 338 430 L 328 444 L 184 444 L 174 430 Z" fill="url(#brassGradH)" stroke="#7A5B08" stroke-width="1.2" />
-    <rect x="188" y="420" width="136" height="20" fill="#2E1B13" stroke="#B8860B" stroke-width="0.8" rx="2" />
-    <text x="256" y="434" font-family="'Cinzel', 'Trajan Pro', 'Georgia', serif" font-size="9.5" font-weight="900" letter-spacing="1.5" fill="#FFE082" text-anchor="middle">THE LECTURER'S STONE</text>
+    <path d="M 148 415 L 364 415 L 376 430 L 364 445 L 148 445 L 136 430 Z" fill="url(#brassGradH)" stroke="#7A5B08" stroke-width="1.2" />
+    <rect x="152" y="419" width="208" height="22" fill="#2E1B13" stroke="#B8860B" stroke-width="0.8" rx="2" />
+    <text x="256" y="434" font-family="'Cinzel', 'Trajan Pro', 'Georgia', serif" font-size="9" font-weight="900" letter-spacing="1.4" fill="#FFE082" text-anchor="middle">THE LECTURER'S STONE</text>
   </g>
 
 

@@ -163,8 +163,8 @@ def format_metadata_html(meta: dict) -> str:
     else:
         clues_block = "<div style='font-size: 13px; color: #64748b; margin-top: 5px;'>None (No automated generator fingerprints detected)</div>"
 
-    created = meta.get("created") or "N/A"
-    modified = meta.get("modified") or "N/A"
+    created = meta.get("created_formatted") or meta.get("created") or "N/A"
+    modified = meta.get("modified_formatted") or meta.get("modified") or "N/A"
     app = meta.get("application") or "N/A"
     if meta.get("app_version"):
         app += f" (v{meta['app_version']})"
@@ -202,7 +202,7 @@ def format_metadata_html(meta: dict) -> str:
     """
 
 
-def analyze_input(text_input, file_input, services_selected, sapling_key):
+def analyze_input(text_input, file_input, services_selected):
     meta_info = None
     if file_input is not None:
         file_path = file_input.name if hasattr(file_input, "name") else str(file_input)
@@ -216,7 +216,6 @@ def analyze_input(text_input, file_input, services_selected, sapling_key):
             return (
                 f"<div style='color:#dc2626; font-weight:bold;'>Error reading file: {e}</div>",
                 "",
-                "",
                 ""
             )
     elif text_input and text_input.strip():
@@ -226,11 +225,9 @@ def analyze_input(text_input, file_input, services_selected, sapling_key):
         return (
             "<div style='color:#d97706; font-weight:bold;'>Please enter text or upload a document (.docx, .xlsx, .pptx, .pdf, .txt).</div>",
             "",
-            "",
             ""
         )
 
-    hub.sapling_api_key = sapling_key if sapling_key and sapling_key.strip() else None
     results = hub.analyze_text(content, services=services_selected)
 
     consensus_pct = results["consensus_percentage"]
@@ -341,8 +338,7 @@ def analyze_input(text_input, file_input, services_selected, sapling_key):
         </div>
         """
 
-    preview_text = content[:1000] + ("..." if len(content) > 1000 else "")
-    return verdict_html, meta_html, table_html, preview_text
+    return verdict_html, meta_html, table_html
 
 
 def sanitize_action(file_input, author_name):
@@ -408,8 +404,8 @@ def create_ui():
     service_choices = []
     if has_local:
         service_choices.append("local_deberta")
-    service_choices.extend(["radar", "fakespot", "yugamj", "piratexx", "heuristic", "sapling"])
-    service_defaults = [s for s in service_choices if s != "sapling"]
+    service_choices.extend(["radar", "fakespot", "yugamj", "piratexx", "heuristic"])
+    service_defaults = list(service_choices)
 
     with gr.Blocks(title="The Lecturer's Stone", theme=light_theme, css=CUSTOM_CSS, head=HEAD_SCRIPT) as demo:
         gr.HTML(header_html)
@@ -445,11 +441,6 @@ def create_ui():
                         value=service_defaults,
                         label="Active Detection Services"
                     )
-                    sapling_key_input = gr.Textbox(
-                        label="Optional Sapling AI API Key",
-                        placeholder="Leave empty unless you have a Sapling API key",
-                        type="password"
-                    )
 
                 with gr.Row():
                     check_btn = gr.Button("Analyze AI & Metadata", variant="primary", size="lg")
@@ -459,9 +450,6 @@ def create_ui():
                 verdict_output = gr.HTML(show_label=False, elem_classes=["clean-html-card"])
                 meta_output = gr.HTML(show_label=False, elem_classes=["clean-html-card"])
                 breakdown_table = gr.HTML(show_label=False, elem_classes=["clean-html-card"])
-
-                with gr.Accordion("Extracted Document Content Preview", open=False):
-                    text_preview = gr.Textbox(label="Extracted Text", lines=6, interactive=False)
 
         def handle_file_change(file):
             if file is not None:
@@ -473,7 +461,6 @@ def create_ui():
                 None,
                 "",
                 gr.update(interactive=True, placeholder="Paste an essay, article, paragraph, or sentence to evaluate for AI authorship..."),
-                "",
                 "",
                 "",
                 ""
@@ -492,13 +479,13 @@ def create_ui():
 
         clear_btn.click(
             fn=handle_clear,
-            outputs=[file_input, text_input, text_input, verdict_output, meta_output, breakdown_table, text_preview]
+            outputs=[file_input, text_input, text_input, verdict_output, meta_output, breakdown_table]
         )
 
         check_btn.click(
             fn=analyze_input,
-            inputs=[text_input, file_input, services_checkbox, sapling_key_input],
-            outputs=[verdict_output, meta_output, breakdown_table, text_preview]
+            inputs=[text_input, file_input, services_checkbox],
+            outputs=[verdict_output, meta_output, breakdown_table]
         )
 
         sanitize_btn.click(

@@ -54,8 +54,8 @@ def print_metadata_section(meta: dict, action_note: str = None):
     if meta.get('manager'):
         print(f"Manager:            {meta.get('manager')}")
 
-    created_str = meta.get('created') or '[None]'
-    modified_str = meta.get('modified') or '[None]'
+    created_str = meta.get('created_formatted') or meta.get('created') or '[None]'
+    modified_str = meta.get('modified_formatted') or meta.get('modified') or '[None]'
     print(f"Created:            {created_str}")
     print(f"Modified:           {modified_str}")
 
@@ -108,8 +108,7 @@ def main():
 
     # AI Detection Options
     parser.add_argument("--json", action="store_true", help="Output results in JSON format.")
-    parser.add_argument("--services", nargs="+", choices=["local_deberta", "szegedai", "radar", "fakespot", "yugamj", "piratexx", "heuristic", "sapling"], help="Specific services to check (default: all active).")
-    parser.add_argument("--sapling-key", type=str, default=None, help="Optional Sapling AI API key.")
+    parser.add_argument("--services", nargs="+", choices=["local_deberta", "szegedai", "radar", "fakespot", "yugamj", "piratexx", "heuristic"], help="Specific services to check (default: all active).")
     parser.add_argument("--export", type=str, default=None, help="Export detailed report to file (e.g. report.json).")
 
     args = parser.parse_args()
@@ -177,7 +176,7 @@ def main():
 
     # Run AI content detection hub
     from checker_hub import AICheckerHub
-    hub = AICheckerHub(sapling_api_key=args.sapling_key)
+    hub = AICheckerHub()
     results = hub.analyze_text(text, services=args.services)
     results["source"] = source_name
     if meta_info:
