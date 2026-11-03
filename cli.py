@@ -17,7 +17,8 @@ if str(current_dir) not in sys.path:
     sys.path.insert(0, str(current_dir))
 
 from document_parser import extract_text_from_file
-from metadata_forensics import inspect_metadata, sanitize_metadata, super_sanitize_metadata, DEFAULT_AUTHOR
+from metadata_forensics import inspect_metadata, cleanse_metadata, DEFAULT_AUTHOR
+sanitize_metadata = cleanse_metadata
 
 
 def format_color_bar(probability: float, length: int = 24) -> str:
@@ -90,21 +91,19 @@ def print_metadata_section(meta: dict, action_note: str = None):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="The Lecturer's Stone - Multi-Service AI Content Detection, Container Metadata Forensics, and Sanitizer."
+        description="The Lecturer's Stone - Multi-Service AI Content Detection, Container Metadata Forensics, and Cleanser."
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("-t", "--text", type=str, help="Plain text string to analyze.")
     group.add_argument("-f", "--file", type=str, help="Path to document file (.txt, .md, .pdf, .docx, .xlsx, .pptx).")
 
-    # Metadata & Sanitization Options
-    parser.add_argument("--sanitize", nargs="?", const="", default=None, metavar="OUT_PATH",
-                        help="Sanitize metadata (Creator/Modifier -> Author, preserves old creation date, cleans environment).")
-    parser.add_argument("--super-sanitize", "--nuke", dest="nuke", nargs="?", const="", default=None, metavar="OUT_PATH",
-                        help="Super-sanitize / nuke all metadata completely while keeping file functional.")
+    # Metadata & Cleansing Options
+    parser.add_argument("--cleanse", "--sanitize", dest="cleanse", nargs="?", const="", default=None, metavar="OUT_PATH",
+                        help="Cleanse metadata (Creator/Modifier -> Author, preserves old creation date, cleans environment).")
     parser.add_argument("--author", type=str, default=DEFAULT_AUTHOR,
-                        help=f"Author / Creator name to apply when sanitizing (default: from LECTURERS_STONE_AUTHOR or '{DEFAULT_AUTHOR}').")
+                        help=f"Author / Creator name to apply when cleansing (default: from LECTURERS_STONE_AUTHOR or '{DEFAULT_AUTHOR}').")
     parser.add_argument("--skip-ai", action="store_true",
-                        help="Skip AI NLP model analysis (perform metadata inspection / sanitization only).")
+                        help="Skip AI NLP model analysis (perform metadata inspection / cleansing only).")
 
     # AI Detection Options
     parser.add_argument("--json", action="store_true", help="Output results in JSON format.")
@@ -131,23 +130,14 @@ def main():
             except Exception as e:
                 meta_info = {"error": f"Failed to inspect metadata: {e}"}
 
-        # Super Sanitize / Nuke
-        if args.nuke is not None:
-            out_target = Path(args.nuke) if args.nuke else None
+        # Document Cleansing
+        if args.cleanse is not None:
+            out_target = Path(args.cleanse) if args.cleanse else None
             try:
-                saved_to = super_sanitize_metadata(file_path, output_path=out_target)
-                action_note = f"Super-sanitized (nuked) file written to: {saved_to}"
+                saved_to = cleanse_metadata(file_path, output_path=out_target, author=args.author, keep_created_date=True)
+                action_note = f"Cleansed file written to: {saved_to} (Author: {args.author}, Old creation date preserved)"
             except Exception as e:
-                action_note = f"Error during super-sanitization: {e}"
-
-        # Standard Sanitize
-        elif args.sanitize is not None:
-            out_target = Path(args.sanitize) if args.sanitize else None
-            try:
-                saved_to = sanitize_metadata(file_path, output_path=out_target, author=args.author, keep_created_date=True)
-                action_note = f"Sanitized file written to: {saved_to} (Author: {args.author}, Old creation date preserved)"
-            except Exception as e:
-                action_note = f"Error during sanitization: {e}"
+                action_note = f"Error during metadata cleansing: {e}"
 
         if args.skip-ai if hasattr(args, "skip-ai") else args.skip_ai:
             if args.json:

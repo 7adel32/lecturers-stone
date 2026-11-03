@@ -1,7 +1,7 @@
 """
-The Lecturer's Stone - Interactive Web GUI (Clean Light Theme with Unified Radii).
+The Lecturer's Stone - Interactive Web GUI.
 Default operation evaluates both AI text authorship across multiple detection models
-and container metadata forensics (.docx, .xlsx, .pptx, .pdf).
+and container metadata forensics (.docx, .xlsx, .pptx, .pdf) with metadata cleansing.
 """
 
 import base64
@@ -16,36 +16,166 @@ if str(current_dir) not in sys.path:
 
 from checker_hub import AICheckerHub
 from document_parser import extract_text_from_file
-from metadata_forensics import inspect_metadata, sanitize_metadata, super_sanitize_metadata, DEFAULT_AUTHOR
+from metadata_forensics import inspect_metadata, cleanse_metadata, DEFAULT_AUTHOR
 from local_detector import is_local_available
 
 hub = AICheckerHub()
 
 CUSTOM_CSS = """
+:root {
+    --stone-ruby: #d33538;
+    --stone-amber: #ffe082;
+    --stone-card-bg: #ffffff;
+    --stone-card-border: #e2e8f0;
+    --stone-divider: #f1f5f9;
+    --stone-text-main: #0f172a;
+    --stone-text-body: #334155;
+    --stone-text-sub: #475569;
+    --stone-text-muted: #64748b;
+    --stone-progress-bg: #f1f5f9;
+    --stone-table-th-bg: #f8fafc;
+    --stone-table-hover: #f8fafc;
+}
+
 /* Global unified 8px radius across interactive components */
 .gradio-container, .block, .panel, .form, input, textarea, button, select {
     border-radius: 8px !important;
 }
 
-/* Force light theme and completely disable dark mode */
-:root, html, body {
-    color-scheme: light !important;
+/* Gradio Container styling with UI gradient glow */
+.gradio-container {
+    max-width: 1280px !important;
+    margin: 16px auto !important;
+    padding: 24px !important;
+    border-radius: 12px !important;
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease !important;
 }
 
-.dark, [data-theme="dark"] {
-    --body-background-fill: #f8fafc !important;
-    --body-text-color: #0f172a !important;
-    --block-background-fill: #ffffff !important;
-    --block-border-color: #e2e8f0 !important;
-    --background-fill-primary: #ffffff !important;
-    --background-fill-secondary: #f8fafc !important;
+/* Light mode container glow with #d33538 and #ffe082 */
+html:not(.dark) .gradio-container {
+    box-shadow: 0 4px 25px -4px rgba(211, 53, 56, 0.09), 0 0 15px -2px rgba(255, 224, 130, 0.14) !important;
+    border: 1px solid #e2e8f0 !important;
     background-color: #f8fafc !important;
-    color: #0f172a !important;
 }
 
-/* Hide theme toggles in footer / settings */
+/* Dark mode styling and radiant UI gradient glow */
+.dark, [data-theme="dark"] {
+    color-scheme: dark !important;
+    --body-background-fill: #090d16 !important;
+    --body-text-color: #f1f5f9 !important;
+    --block-background-fill: #111726 !important;
+    --block-border-color: #1e293b !important;
+    --background-fill-primary: #111726 !important;
+    --background-fill-secondary: #090d16 !important;
+    --border-color-primary: #1e293b !important;
+    background-color: #090d16 !important;
+    color: #f1f5f9 !important;
+
+    --stone-card-bg: #111726;
+    --stone-card-border: #1e293b;
+    --stone-divider: #1e293b;
+    --stone-text-main: #f8fafc;
+    --stone-text-body: #cbd5e1;
+    --stone-text-sub: #94a3b8;
+    --stone-text-muted: #64748b;
+    --stone-progress-bg: #1e293b;
+    --stone-table-th-bg: #162032;
+    --stone-table-hover: #1a2538;
+}
+
+.dark .gradio-container {
+    box-shadow: 0 0 50px -6px rgba(211, 53, 56, 0.38), 0 0 25px -3px rgba(255, 224, 130, 0.28) !important;
+    border: 1px solid rgba(211, 53, 56, 0.35) !important;
+    background-color: #090d16 !important;
+}
+
+/* Hide standard theme toggles in footer / settings */
 footer, .settings-btn, button[aria-label="Toggle theme"], button:has(.settings), .settings {
     display: none !important;
+}
+
+/* Accent Gradient on Primary Button with glow */
+button.primary, .gradio-container button.primary {
+    background: linear-gradient(135deg, #d33538 0%, #ea580c 45%, #ffe082 100%) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    border: none !important;
+    box-shadow: 0 3px 12px rgba(211, 53, 56, 0.35), 0 0 10px rgba(255, 224, 130, 0.2) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+button.primary:hover, .gradio-container button.primary:hover {
+    filter: brightness(1.1) !important;
+    box-shadow: 0 4px 18px rgba(211, 53, 56, 0.5), 0 0 18px rgba(255, 224, 130, 0.35) !important;
+    transform: translateY(-1px) !important;
+}
+
+button.primary:active, .gradio-container button.primary:active {
+    transform: translateY(0) !important;
+}
+
+/* Interactive Stone Logo Button */
+#stone-toggle-wrap {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: transform 0.25s ease;
+}
+
+#stone-toggle-wrap:hover #stone-img {
+    transform: scale(1.08) rotate(1deg);
+    filter: drop-shadow(0 0 24px rgba(211, 53, 56, 0.85)) drop-shadow(0 0 14px rgba(255, 224, 130, 0.8)) !important;
+}
+
+#stone-toggle-wrap:active #stone-img {
+    transform: scale(0.95);
+}
+
+.stone-pill {
+    margin-top: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+    background: rgba(211, 53, 56, 0.1);
+    color: #d33538;
+    border: 1px solid rgba(211, 53, 56, 0.25);
+    letter-spacing: 0.02em;
+    transition: all 0.2s ease;
+}
+
+.dark .stone-pill {
+    background: rgba(255, 224, 130, 0.12);
+    color: #ffe082;
+    border-color: rgba(255, 224, 130, 0.3);
+}
+
+/* Accent Header Subtitle Gradient */
+.stone-subtitle {
+    font-size: 14.5px;
+    font-weight: 700;
+    margin-top: 4px;
+    background: linear-gradient(90deg, #d33538 0%, #b45309 60%, #9a3412 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.dark .stone-subtitle {
+    background: linear-gradient(90deg, #f87171 0%, #fde047 50%, #ffe082 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* UI Accent Gradient Bar */
+.stone-glow-bar {
+    height: 3px;
+    width: 100%;
+    background: linear-gradient(90deg, #d33538 0%, #ea580c 50%, #ffe082 100%);
+    border-radius: 3px;
+    box-shadow: 0 0 14px rgba(211, 53, 56, 0.55), 0 0 8px rgba(255, 224, 130, 0.65);
+    margin-bottom: 16px;
 }
 
 /* Eliminate double container borders on custom HTML card blocks */
@@ -54,6 +184,21 @@ footer, .settings-btn, button[aria-label="Toggle theme"], button:has(.settings),
     border: none !important;
     padding: 0 !important;
     box-shadow: none !important;
+}
+
+/* Custom Cards (Verdict & Forensics) */
+.verdict-card, .metadata-card {
+    background-color: var(--stone-card-bg) !important;
+    border: 1px solid var(--stone-card-border) !important;
+    border-radius: 8px !important;
+    color: var(--stone-text-main) !important;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+    transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease !important;
+}
+
+.dark .verdict-card, .dark .metadata-card {
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 16px -4px rgba(211, 53, 56, 0.18) !important;
 }
 
 /* Override Gradio built-in prose black borders on tables and cells */
@@ -68,14 +213,19 @@ footer, .settings-btn, button[aria-label="Toggle theme"], button:has(.settings),
     border: none !important;
 }
 
-/* Service Table Card Container with unified 8px radius */
+/* Service Table Card Container */
 .service-table-card {
-    border: 1px solid #e2e8f0 !important;
+    border: 1px solid var(--stone-card-border) !important;
     border-radius: 8px !important;
     overflow: hidden !important;
-    background: #ffffff !important;
+    background: var(--stone-card-bg) !important;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
     margin-top: 4px;
+    transition: background-color 0.25s ease, border-color 0.25s ease !important;
+}
+
+.dark .service-table-card {
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 16px -4px rgba(211, 53, 56, 0.18) !important;
 }
 
 .service-table-card table {
@@ -93,18 +243,18 @@ footer, .settings-btn, button[aria-label="Toggle theme"], button:has(.settings),
     padding: 12px 16px !important;
     font-weight: 600 !important;
     font-size: 12.5px !important;
-    color: #475569 !important;
-    background-color: #f8fafc !important;
+    color: var(--stone-text-sub) !important;
+    background-color: var(--stone-table-th-bg) !important;
     border: none !important;
-    border-bottom: 1px solid #e2e8f0 !important;
+    border-bottom: 1px solid var(--stone-card-border) !important;
     text-align: left !important;
 }
 
 .service-table-card td {
     padding: 12px 16px !important;
     border: none !important;
-    border-bottom: 1px solid #f1f5f9 !important;
-    color: #1e293b !important;
+    border-bottom: 1px solid var(--stone-divider) !important;
+    color: var(--stone-text-main) !important;
     vertical-align: middle !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
@@ -116,19 +266,83 @@ footer, .settings-btn, button[aria-label="Toggle theme"], button:has(.settings),
 }
 
 .service-table-card tr:hover td {
-    background-color: #f8fafc !important;
+    background-color: var(--stone-table-hover) !important;
+}
+
+/* Dark mode inputs, textareas, dropzones */
+.dark textarea, .dark input[type="text"] {
+    background-color: #111726 !important;
+    color: #f8fafc !important;
+    border-color: #1e293b !important;
+}
+
+.dark .file-preview, .dark [data-testid="file-upload"], .dark .upload_zone {
+    background-color: #111726 !important;
+    border-color: #1e293b !important;
+    color: #cbd5e1 !important;
+}
+
+.dark .label-wrap, .dark .gr-accordion {
+    background-color: #111726 !important;
+    border-color: #1e293b !important;
+    color: #f8fafc !important;
+}
+
+.dark button:not(.primary) {
+    background-color: #162032 !important;
+    color: #e2e8f0 !important;
+    border-color: #1e293b !important;
 }
 """
 
 HEAD_SCRIPT = """
 <script>
-    document.documentElement.classList.remove('dark');
-    const observer = new MutationObserver(() => {
-        if (document.documentElement.classList.contains('dark')) {
-            document.documentElement.classList.remove('dark');
+    (function() {
+        function applyStoneTheme(theme) {
+            const isDark = theme === 'dark';
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+                document.body.classList.add('dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.body.classList.remove('dark');
+                document.documentElement.setAttribute('data-theme', 'light');
+            }
+            const pill = document.querySelector('.stone-pill');
+            if (pill) {
+                pill.textContent = isDark ? 'Click stone for light mode' : 'Click stone for dark mode';
+            }
+            try {
+                localStorage.setItem('lecturers_stone_theme', theme);
+                localStorage.setItem('color-theme', theme);
+                localStorage.setItem('gradio-theme', theme);
+            } catch (e) {}
         }
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+        window.toggleStoneTheme = function() {
+            const currentlyDark = document.documentElement.classList.contains('dark') || document.body.classList.contains('dark');
+            const targetTheme = currentlyDark ? 'light' : 'dark';
+            applyStoneTheme(targetTheme);
+        };
+
+        function initTheme() {
+            try {
+                const saved = localStorage.getItem('lecturers_stone_theme') || localStorage.getItem('color-theme');
+                if (saved === 'dark') {
+                    applyStoneTheme('dark');
+                } else if (saved === 'light') {
+                    applyStoneTheme('light');
+                }
+            } catch (e) {}
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initTheme);
+        } else {
+            initTheme();
+        }
+    })();
 </script>
 """
 
@@ -136,9 +350,9 @@ HEAD_SCRIPT = """
 def format_metadata_html(meta: dict) -> str:
     if not meta or not meta.get("has_metadata"):
         return """
-        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; color: #334155; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-            <div style="font-weight: 600; font-size: 14px; color: #1e293b; margin-bottom: 3px;">Container Metadata Forensics</div>
-            <div style="font-size: 13px; color: #64748b;">No container metadata or plain text file.</div>
+        <div class="metadata-card" style="padding: 14px 16px; margin-bottom: 14px;">
+            <div style="font-weight: 600; font-size: 14px; color: var(--stone-text-main); margin-bottom: 3px;">Container Metadata Forensics</div>
+            <div style="font-size: 13px; color: var(--stone-text-muted);">No container metadata or plain text file.</div>
         </div>
         """
 
@@ -161,7 +375,7 @@ def format_metadata_html(meta: dict) -> str:
         clues_html = "".join([f"<li style='color: #b91c1c; margin-top: 4px; font-weight: 500;'>[!] {c}</li>" for c in clues])
         clues_block = f"<ul style='margin: 6px 0 0 16px; padding: 0; font-size: 13px;'>{clues_html}</ul>"
     else:
-        clues_block = "<div style='font-size: 13px; color: #64748b; margin-top: 5px;'>None (No automated generator fingerprints detected)</div>"
+        clues_block = "<div style='font-size: 13px; color: var(--stone-text-muted); margin-top: 5px;'>None (No automated generator fingerprints detected)</div>"
 
     created = meta.get("created_formatted") or meta.get("created") or "N/A"
     modified = meta.get("modified_formatted") or meta.get("modified") or "N/A"
@@ -176,26 +390,26 @@ def format_metadata_html(meta: dict) -> str:
     authors_str = ", ".join(all_auths) if all_auths else "[None / Stripped]"
 
     return f"""
-    <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin-bottom: 14px; color: #1e293b; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
-            <span style="font-weight: 700; font-size: 15px; color: #0f172a;">Metadata Forensics & Container Environment</span>
+    <div class="metadata-card" style="padding: 18px; margin-bottom: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--stone-divider); padding-bottom: 8px;">
+            <span style="font-weight: 700; font-size: 15px; color: var(--stone-text-main);">Metadata Forensics & Container Environment</span>
             <span style="background-color: {badge_bg}; color: {risk_color}; border: 1px solid {badge_border}; padding: 3px 10px; border-radius: 6px; font-weight: 600; font-size: 12px;">
                 {risk}: {meta.get('verdict')}
             </span>
         </div>
-        <div style="margin-bottom: 10px; font-size: 13.5px; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9;">
-            <span style="color: #64748b; font-weight: 500;">All Identified Authors / Owners:</span> <b style="color: #0f172a; margin-left: 6px;">{authors_str}</b>
+        <div style="margin-bottom: 10px; font-size: 13.5px; padding-bottom: 8px; border-bottom: 1px solid var(--stone-divider);">
+            <span style="color: var(--stone-text-muted); font-weight: 500;">All Identified Authors / Owners:</span> <b style="color: var(--stone-text-main); margin-left: 6px;">{authors_str}</b>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
-            <div><span style="color: #64748b;">Primary Creator:</span> <b style="color: #334155; margin-left: 4px;">{meta.get('creator') or '[None / Stripped]'}</b></div>
-            <div><span style="color: #64748b;">Last Modifier:</span> <b style="color: #334155; margin-left: 4px;">{meta.get('last_modified_by') or '[None / Stripped]'}</b></div>
-            <div><span style="color: #64748b;">Application / Tool:</span> <b style="color: #334155; margin-left: 4px;">{app}</b></div>
-            <div><span style="color: #64748b;">Revision / Edit Time:</span> <b style="color: #334155; margin-left: 4px;">Rev {rev} | {edit_time}</b></div>
-            <div><span style="color: #64748b;">Created Date:</span> <b style="color: #334155; margin-left: 4px;">{created}</b></div>
-            <div><span style="color: #64748b;">Modified Date:</span> <b style="color: #334155; margin-left: 4px;">{modified}</b></div>
+            <div><span style="color: var(--stone-text-muted);">Primary Creator:</span> <b style="color: var(--stone-text-body); margin-left: 4px;">{meta.get('creator') or '[None / Stripped]'}</b></div>
+            <div><span style="color: var(--stone-text-muted);">Last Modifier:</span> <b style="color: var(--stone-text-body); margin-left: 4px;">{meta.get('last_modified_by') or '[None / Stripped]'}</b></div>
+            <div><span style="color: var(--stone-text-muted);">Application / Tool:</span> <b style="color: var(--stone-text-body); margin-left: 4px;">{app}</b></div>
+            <div><span style="color: var(--stone-text-muted);">Revision / Edit Time:</span> <b style="color: var(--stone-text-body); margin-left: 4px;">Rev {rev} | {edit_time}</b></div>
+            <div><span style="color: var(--stone-text-muted);">Created Date:</span> <b style="color: var(--stone-text-body); margin-left: 4px;">{created}</b></div>
+            <div><span style="color: var(--stone-text-muted);">Modified Date:</span> <b style="color: var(--stone-text-body); margin-left: 4px;">{modified}</b></div>
         </div>
-        <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid #f1f5f9;">
-            <span style="color: #475569; font-size: 13px; font-weight: 600;">Programmatic Clues:</span>
+        <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--stone-divider);">
+            <span style="color: var(--stone-text-sub); font-size: 13px; font-weight: 600;">Programmatic Clues:</span>
             {clues_block}
         </div>
     </div>
@@ -258,25 +472,25 @@ def analyze_input(text_input, file_input, services_selected):
             badge_bg = "#dcfce7"
         pct_display = f"{consensus_pct}%"
         progress_width = consensus_pct
-        consensus_summary = f"Consensus: <b style='color: #0f172a;'>{ai_votes} AI</b> vs <b style='color: #0f172a;'>{human_votes} Human</b> (out of {total_valid} engines)"
-        spread_summary = f"Spread: <b style='color: #0f172a;'>{results['score_spread']['min']*100:.1f}%</b> - <b style='color: #0f172a;'>{results['score_spread']['max']*100:.1f}%</b>"
+        consensus_summary = f"Consensus: <b style='color: var(--stone-text-main);'>{ai_votes} AI</b> vs <b style='color: var(--stone-text-main);'>{human_votes} Human</b> (out of {total_valid} engines)"
+        spread_summary = f"Spread: <b style='color: var(--stone-text-main);'>{results['score_spread']['min']*100:.1f}%</b> - <b style='color: var(--stone-text-main);'>{results['score_spread']['max']*100:.1f}%</b>"
 
     verdict_html = f"""
-    <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; color: #0f172a; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+    <div class="verdict-card" style="padding: 20px; margin-bottom: 14px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <span style="font-size: 13.5px; color: #64748b;">Source: <b style="color: #0f172a;">{source_desc}</b> ({results['document_stats']['words']} words, {results['document_stats']['characters']} chars)</span>
+            <span style="font-size: 13.5px; color: var(--stone-text-muted);">Source: <b style="color: var(--stone-text-main);">{source_desc}</b> ({results['document_stats']['words']} words, {results['document_stats']['characters']} chars)</span>
             <span style="background-color: {badge_bg}; color: {badge_color}; border: 1px solid {badge_color}; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 12.5px;">
                 {verdict}
             </span>
         </div>
         <div style="display: flex; align-items: baseline; gap: 12px;">
             <h2 style="margin: 0; font-size: 38px; font-weight: 800; color: {badge_color};">{pct_display}</h2>
-            <span style="font-size: 16px; color: #475569; font-weight: 500;">Consensus AI Probability</span>
+            <span style="font-size: 16px; color: var(--stone-text-sub); font-weight: 500;">Consensus AI Probability</span>
         </div>
-        <div style="margin-top: 12px; background: #f1f5f9; border-radius: 6px; height: 10px; overflow: hidden; border: 1px solid #e2e8f0;">
+        <div style="margin-top: 12px; background: var(--stone-progress-bg); border-radius: 6px; height: 10px; overflow: hidden; border: 1px solid var(--stone-card-border);">
             <div style="background: {badge_color}; height: 100%; width: {progress_width}%; border-radius: 5px;"></div>
         </div>
-        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12.5px; color: #64748b;">
+        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12.5px; color: var(--stone-text-muted);">
             <span>{consensus_summary}</span>
             <span>{spread_summary}</span>
         </div>
@@ -300,10 +514,10 @@ def analyze_input(text_input, file_input, services_selected):
 
             table_rows.append(f"""
             <tr>
-                <td style="color: #0f172a; font-weight: 600;">{s_name}</td>
+                <td style="color: var(--stone-text-main); font-weight: 600;">{s_name}</td>
                 <td>{badge}</td>
-                <td style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; color: #334155;">{pct_val}</td>
-                <td style="color: #64748b;">{lat}s</td>
+                <td style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; color: var(--stone-text-body);">{pct_val}</td>
+                <td style="color: var(--stone-text-muted);">{lat}s</td>
             </tr>
             """)
 
@@ -333,7 +547,7 @@ def analyze_input(text_input, file_input, services_selected):
         """
     else:
         table_html = """
-        <div class="service-table-card" style="padding: 16px; text-align: center; color: #64748b; font-size: 13.5px;">
+        <div class="service-table-card" style="padding: 16px; text-align: center; color: var(--stone-text-muted); font-size: 13.5px;">
             No classifiers completed successfully for this input.
         </div>
         """
@@ -341,21 +555,13 @@ def analyze_input(text_input, file_input, services_selected):
     return verdict_html, meta_html, table_html
 
 
-def sanitize_action(file_input, author_name):
+def cleanse_action(file_input, author_name):
     if file_input is None:
-        return None, "No file uploaded to sanitize."
+        return None, "No file uploaded to cleanse."
     file_path = file_input.name if hasattr(file_input, "name") else str(file_input)
     author = author_name if author_name and author_name.strip() else DEFAULT_AUTHOR
-    out_file = sanitize_metadata(file_path, author=author, keep_created_date=True)
-    return out_file, f"Sanitized: Author set to '{author}', old creation date preserved."
-
-
-def nuke_action(file_input):
-    if file_input is None:
-        return None, "No file uploaded to nuke."
-    file_path = file_input.name if hasattr(file_input, "name") else str(file_input)
-    out_file = super_sanitize_metadata(file_path)
-    return out_file, "Super-Sanitized: All metadata completely wiped. File is structurally valid."
+    out_file = cleanse_metadata(file_path, author=author, keep_created_date=True)
+    return out_file, f"Cleansed: Author set to '{author}', original creation date preserved."
 
 
 def create_ui():
@@ -385,19 +591,21 @@ def create_ui():
         logo_path = current_dir / "assets" / "logo.png"
     if logo_path.is_file():
         logo_b64 = base64.b64encode(logo_path.read_bytes()).decode("utf-8")
-        logo_html = f'<img src="data:image/png;base64,{logo_b64}" alt="Logo" style="height: 102px; width: auto; object-fit: contain; border-radius: 8px;" />'
+        logo_html = f'<img id="stone-img" src="data:image/png;base64,{logo_b64}" alt="The Lecturer\'s Stone" style="height: 102px; width: auto; object-fit: contain; border-radius: 8px; filter: drop-shadow(0 0 12px rgba(211, 53, 56, 0.45)) drop-shadow(0 0 6px rgba(255, 224, 130, 0.35)); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: auto;" />'
     else:
         logo_html = ""
 
     header_html = f"""
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #e2e8f0;">
+    <div class="stone-glow-bar"></div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--stone-card-border);">
         <div>
-            <h1 style="margin: 0; font-size: 28px; font-weight: 800; color: #0f172a; letter-spacing: -0.02em;">The Lecturer's Stone</h1>
-            <div style="font-size: 14.5px; font-weight: 600; color: #2563eb; margin-top: 4px;">Multi-Service AI Content Detection, Container Metadata Forensics, and Sanitizer</div>
-            <div style="font-size: 13px; color: #64748b; margin-top: 4px;">Evaluates both text authorship probability across independent models and container <b>metadata forensics</b> (.docx, .xlsx, .pptx, .pdf).</div>
+            <h1 style="margin: 0; font-size: 28px; font-weight: 800; color: var(--stone-text-main); letter-spacing: -0.02em;">The Lecturer's Stone</h1>
+            <div class="stone-subtitle">Multi-Service AI Content Detection, Container Metadata Forensics, and Cleanser</div>
+            <div style="font-size: 13px; color: var(--stone-text-muted); margin-top: 4px;">Evaluates both text authorship probability across independent models and container <b>metadata forensics</b> (.docx, .xlsx, .pptx, .pdf).</div>
         </div>
-        <div style="flex-shrink: 0; margin-left: 20px;">
+        <div id="stone-toggle-wrap" onclick="window.toggleStoneTheme && window.toggleStoneTheme()" title="Click the Stone to toggle Dark / Light mode">
             {logo_html}
+            <span class="stone-pill">Click stone for dark mode</span>
         </div>
     </div>
     """
@@ -409,7 +617,7 @@ def create_ui():
     service_choices.extend(["radar", "fakespot", "yugamj", "piratexx", "heuristic"])
     service_defaults = list(service_choices)
 
-    with gr.Blocks(title="The Lecturer's Stone", theme=light_theme, css=CUSTOM_CSS, head=HEAD_SCRIPT) as demo:
+    with gr.Blocks(title="The Lecturer's Stone") as demo:
         gr.HTML(header_html)
 
         with gr.Row():
@@ -425,16 +633,14 @@ def create_ui():
                     lines=6
                 )
 
-                with gr.Accordion("Sanitize & Metadata Tools", open=False):
+                with gr.Accordion("Cleanse Document Metadata", open=False):
                     author_name_input = gr.Textbox(
-                        label="Author Name for Sanitization",
+                        label="Author Name for Cleansing",
                         value=DEFAULT_AUTHOR,
                         placeholder="e.g. Author or Student"
                     )
-                    with gr.Row():
-                        sanitize_btn = gr.Button("Sanitize Metadata (Preserve Date)", variant="secondary")
-                        nuke_btn = gr.Button("Super-Sanitize / Nuke All Metadata", variant="stop")
-                    cleaned_file_output = gr.File(label="Download Cleaned Document", interactive=False)
+                    cleanse_btn = gr.Button("Cleanse Document Metadata (Preserve Date)", variant="secondary")
+                    cleaned_file_output = gr.File(label="Download Cleansed Document", interactive=False)
                     action_status = gr.Markdown("")
 
                 with gr.Accordion("Engine Selection & Settings", open=False):
@@ -490,21 +696,15 @@ def create_ui():
             outputs=[verdict_output, meta_output, breakdown_table]
         )
 
-        sanitize_btn.click(
-            fn=sanitize_action,
+        cleanse_btn.click(
+            fn=cleanse_action,
             inputs=[file_input, author_name_input],
             outputs=[cleaned_file_output, action_status]
         )
 
-        nuke_btn.click(
-            fn=nuke_action,
-            inputs=[file_input],
-            outputs=[cleaned_file_output, action_status]
-        )
-
-    return demo, light_theme, CUSTOM_CSS
+    return demo, light_theme, CUSTOM_CSS, HEAD_SCRIPT
 
 
 if __name__ == "__main__":
-    demo, theme, css = create_ui()
-    demo.launch(server_name="127.0.0.1", server_port=7865, theme=theme, css=css)
+    demo, theme, css, head = create_ui()
+    demo.launch(server_name="127.0.0.1", server_port=7865, theme=theme, css=css, head=head)

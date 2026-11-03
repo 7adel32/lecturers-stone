@@ -4,9 +4,9 @@
 
 # The Lecturer's Stone
 
-An academic-grade multi-engine AI content detector, container metadata forensics framework, and document sanitizer.
+An academic-grade multi-engine AI content detector, container metadata forensics framework, and document cleanser.
 
-Combines transformer sequence classifiers, statistical NLP burstiness algorithms, and container XML forensics to inspect submissions, detect automated generator fingerprints (`openpyxl`, `python-docx`, `python-pptx`, `iText`, `ReportLab`), and sanitize document metadata while preserving original creation timelines.
+Combines transformer sequence classifiers, statistical NLP burstiness algorithms, and container XML forensics to inspect submissions, detect automated generator fingerprints (`openpyxl`, `python-docx`, `python-pptx`, `iText`, `ReportLab`), and cleanse document metadata while preserving original creation timelines.
 
 ---
 
@@ -48,20 +48,15 @@ The Lecturer's Stone unifies **Container Forensics** and **Multi-Service AI Cons
 
 ---
 
-## Sanitization Engine
+## Metadata Cleansing Engine
 
-The tool provides two non-destructive sanitization modes that maintain full document structural validity:
+The tool provides non-destructive metadata cleansing that maintains full document structural validity:
 
-### Mode 1: Smart Sanitize
 - Replaces Creator and Last Modifier with the configured author name (read from `LECTURERS_STONE_AUTHOR` or `--author`).
 - **Preserves Original Creation Date**: Keeps the authentic `dcterms:created` timestamp so the file does not appear artificially created at the moment of cleaning.
 - Scrubs automated library markers (`openpyxl`, `python-docx`, `python-pptx`, `iText`, `ReportLab`).
 - Clears environment leaks (Company, Manager, custom properties, template paths).
 - Sets realistic revision counters and standard application tags (`Microsoft Word`, `Microsoft Excel`, `Microsoft PowerPoint`).
-
-### Mode 2: Super-Sanitize (Nuke)
-- Completely purges all metadata fields, Dublin Core tags, and XMP packets.
-- Retains proper OpenXML and PDF container structures to guarantee the file opens cleanly without XML corruption or repair dialogs.
 
 ---
 
@@ -117,25 +112,19 @@ Inspects container metadata, author lists, and library fingerprints in under 0.2
 python cli.py -f "path\to\document.docx" --skip-ai
 ```
 
-### 3. Sanitize Document (Preserve Creation Date)
+### 3. Cleanse Document Metadata (Preserve Creation Date)
 
 ```powershell
-python cli.py -f "draft.docx" --sanitize "submission.docx" --skip-ai
+python cli.py -f "draft.docx" --cleanse "submission.docx" --skip-ai
 ```
 
-### 4. Super-Sanitize / Nuke All Metadata
-
-```powershell
-python cli.py -f "draft.pdf" --nuke "clean.pdf" --skip-ai
-```
-
-### 5. Plain Text Check
+### 4. Plain Text Check
 
 ```powershell
 python cli.py -t "Paste essay or article string here..."
 ```
 
-### 6. JSON Export
+### 5. JSON Export
 
 ```powershell
 python cli.py -f "document.docx" --json --export "report.json"
@@ -152,10 +141,11 @@ python app.py
 ```
 
 The Web interface allows:
+- Click the Stone logo to toggle Dark / Light mode with radiant glowing accents (`#d33538` & `#ffe082`).
 - Drag-and-drop document uploads (`.docx`, `.xlsx`, `.pptx`, `.pdf`, `.txt`, `.md`).
 - Real-time consensus score bar and individual engine breakdowns.
 - Metadata forensics card displaying all detected authors, creation dates, and library fingerprints.
-- One-click buttons to download Sanitized or Nuked files directly from the browser.
+- One-click button to download Cleansed files directly from the browser.
 
 ---
 
@@ -167,7 +157,7 @@ lecturers-stone/
 ├── cli.py                # Standalone command-line interface
 ├── web_gui.py            # Gradio Web dashboard
 ├── checker_hub.py        # Multi-service AI detection consensus framework
-├── metadata_forensics.py # Metadata inspector, clue finder, and sanitizer
+├── metadata_forensics.py # Metadata inspector, clue finder, and cleanser
 ├── local_detector.py     # Local DeBERTa GPU model runner (CUDA / CPU)
 ├── heuristic_engine.py   # Statistical burstiness & lexical diversity engine
 ├── document_parser.py    # Multi-format document parser (DOCX, XLSX, PPTX, PDF, TXT)

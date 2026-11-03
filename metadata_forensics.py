@@ -1,5 +1,5 @@
 """
-The Lecturer's Stone - Metadata Forensics and Sanitization Engine.
+The Lecturer's Stone - Metadata Forensics and Cleansing Engine.
 Inspects documents (DOCX, XLSX, PPTX, PDF) for:
 - Owner / Creator / Author names across Dublin Core, XMP, and comments
 - Last Modifier / Editor
@@ -8,9 +8,8 @@ Inspects documents (DOCX, XLSX, PPTX, PDF) for:
 - Editing timeline (Created, Modified, Total Edit Time, Revision count)
 
 Also provides:
-- sanitize_metadata(): Replaces creator/modifier with configured author, preserves original creation date,
-                       and removes environment / programmatic generator leaks.
-- super_sanitize_metadata(): Nukes and wipes all metadata while keeping the file structurally valid and functional.
+- cleanse_metadata(): Replaces creator/modifier with configured author, preserves original creation date,
+                      and removes environment / programmatic generator leaks.
 """
 
 import os
@@ -402,14 +401,14 @@ def _evaluate_generator_clues(result: Dict[str, Any]):
     result["modified_formatted"] = format_datetime_human(result.get("modified"))
 
 
-def sanitize_metadata(
+def cleanse_metadata(
     file_path: Union[str, Path],
     output_path: Optional[Union[str, Path]] = None,
     author: Optional[str] = None,
     keep_created_date: bool = True
 ) -> str:
     """
-    Sanitize document metadata:
+    Cleanse document metadata:
     - Sets Creator and Last Modified By to author (defaults to LECTURERS_STONE_AUTHOR or DEFAULT_AUTHOR)
     - Sets Creation Date = original creation date (or current time if missing)
     - Cleans out environment leaks (openpyxl, python-docx, ReportLab, Company, Manager, custom props)
@@ -422,7 +421,7 @@ def sanitize_metadata(
 
     ext = src.suffix.lower()
     if output_path is None:
-        target = src.parent / f"{src.stem}_sanitized{src.suffix}"
+        target = src.parent / f"{src.stem}_cleansed{src.suffix}"
     else:
         target = Path(output_path)
 
@@ -433,51 +432,21 @@ def sanitize_metadata(
     old_created = info.get("created")
 
     if ext in [".docx", ".xlsx", ".xlsm", ".pptx"]:
-        _sanitize_ooxml(src, target, author=target_author, old_created=old_created, keep_created=keep_created_date, nuke=False)
+        _cleanse_ooxml(src, target, author=target_author, old_created=old_created, keep_created=keep_created_date)
     elif ext == ".pdf":
-        _sanitize_pdf(src, target, author=target_author, old_created=old_created, keep_created=keep_created_date, nuke=False)
+        _cleanse_pdf(src, target, author=target_author, old_created=old_created, keep_created=keep_created_date)
     else:
-        raise ValueError(f"Unsupported file format for sanitization: {ext}")
+        raise ValueError(f"Unsupported file format for cleansing: {ext}")
 
     return str(target.resolve())
 
 
-def super_sanitize_metadata(
-    file_path: Union[str, Path],
-    output_path: Optional[Union[str, Path]] = None
-) -> str:
-    """
-    Super Sanitize / Nuke document metadata:
-    - Completely wipes and strips all metadata fields (Creator, Dates, Company, App, Custom Props).
-    - Ensures the file remains 100% valid, functional, and non-corrupt.
-    """
-    src = Path(file_path)
-    if not src.is_file():
-        raise FileNotFoundError(f"File not found: {src}")
-
-    ext = src.suffix.lower()
-    if output_path is None:
-        target = src.parent / f"{src.stem}_nuked{src.suffix}"
-    else:
-        target = Path(output_path)
-
-    if ext in [".docx", ".xlsx", ".xlsm", ".pptx"]:
-        _sanitize_ooxml(src, target, author=None, old_created=None, keep_created=False, nuke=True)
-    elif ext == ".pdf":
-        _sanitize_pdf(src, target, author=None, old_created=None, keep_created=False, nuke=True)
-    else:
-        raise ValueError(f"Unsupported file format for super sanitization: {ext}")
-
-    return str(target.resolve())
+# Backwards compatibility alias
+sanitize_metadata = cleanse_metadata
 
 
-def _clean_core_xml(xml_bytes: bytes, author: Optional[str], created_iso: Optional[str], nuke: bool) -> bytes:
+def _clean_core_xml(xml_bytes: bytes, author: Optional[str], created_iso: Optional[str]) -> bytes:
     root = ET.fromstring(xml_bytes)
-
-    if nuke:
-        for elem in list(root):
-            root.remove(elem)
-        return ET.tostring(root, encoding="utf-8", xml_declaration=True)
 
     target_author = author or DEFAULT_AUTHOR
     now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -513,33 +482,28 @@ def _clean_core_xml(xml_bytes: bytes, author: Optional[str], created_iso: Option
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
 
 
-def _clean_app_xml(xml_bytes: bytes, app_name: str, nuke: bool) -> bytes:
+def _clean_app_xml(xml_bytes: bytes, app_name: str) -> bytes:
     root = ET.fromstring(xml_bytes)
     for elem in list(root):
         tag = elem.tag.split("}")[-1]
-        if nuke:
-            if tag in ["Company", "Manager", "Application", "AppVersion", "Template"]:
-                root.remove(elem)
-        else:
-            if tag in ["Company", "Manager"]:
-                root.remove(elem)
-            elif tag == "Application":
-                elem.text = app_name
-            elif tag == "AppVersion":
-                elem.text = "16.0000"
-            elif tag == "TotalTime":
-                elem.text = "45"
+        if tag in ["Company", "Manager"]:
+            root.remove(elem)
+        elif tag == "Application":
+            elem.text = app_name
+        elif tag == "AppVersion":
+            elem.text = "16.0000"
+        elif tag == "TotalTime":
+            elem.text = "45"
 
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
 
 
-def _sanitize_ooxml(
+def _cleanse_ooxml(
     src: Path,
     target: Path,
     author: Optional[str],
     old_created: Optional[str],
-    keep_created: bool,
-    nuke: bool
+    keep_created: bool
 ):
     ext = src.suffix.lower()
     if ext == ".docx":
@@ -557,41 +521,36 @@ def _sanitize_ooxml(
         for item in zin.infolist():
             data = zin.read(item.filename)
             if item.filename == "docProps/core.xml":
-                data = _clean_core_xml(data, author=author, created_iso=created_iso, nuke=nuke)
+                data = _clean_core_xml(data, author=author, created_iso=created_iso)
             elif item.filename == "docProps/app.xml":
-                data = _clean_app_xml(data, app_name=app_name, nuke=nuke)
+                data = _clean_app_xml(data, app_name=app_name)
             zout.writestr(item, data)
 
 
-def _sanitize_pdf(
+def _cleanse_pdf(
     src: Path,
     target: Path,
     author: Optional[str],
     old_created: Optional[str],
-    keep_created: bool,
-    nuke: bool
+    keep_created: bool
 ):
     if pymupdf is None:
-        raise RuntimeError("PyMuPDF is required for PDF sanitization")
+        raise RuntimeError("PyMuPDF is required for PDF metadata cleansing")
 
     doc = pymupdf.open(str(src))
-    if nuke:
-        doc.set_metadata({})
-        doc.del_xml_metadata()
-    else:
-        target_author = author or DEFAULT_AUTHOR
-        cdate = old_created if (keep_created and old_created) else "D:20240115120000Z"
-        doc.set_metadata({
-            "author": target_author,
-            "creator": "Microsoft Word",
-            "producer": "Microsoft Word for Windows",
-            "title": "",
-            "subject": "",
-            "keywords": "",
-            "creationDate": cdate,
-            "modDate": cdate
-        })
-        doc.del_xml_metadata()
+    target_author = author or DEFAULT_AUTHOR
+    cdate = old_created if (keep_created and old_created) else "D:20240115120000Z"
+    doc.set_metadata({
+        "author": target_author,
+        "creator": "Microsoft Word",
+        "producer": "Microsoft Word for Windows",
+        "title": "",
+        "subject": "",
+        "keywords": "",
+        "creationDate": cdate,
+        "modDate": cdate
+    })
+    doc.del_xml_metadata()
 
     doc.save(str(target), garbage=4, clean=True, deflate=True)
     doc.close()
