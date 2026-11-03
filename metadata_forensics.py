@@ -69,22 +69,68 @@ NS = {
 }
 
 KNOWN_GENERATOR_SIGNATURES = [
+    # Python generators
     ("openpyxl", "openpyxl (Python Excel library)"),
     ("python-docx", "python-docx (Python Word library)"),
     ("python-pptx", "python-pptx (Python PowerPoint library)"),
+    ("xlsxwriter", "XlsxWriter (Python Excel library)"),
+    ("xlwt", "xlwt (Python legacy Excel library)"),
     ("reportlab", "ReportLab (Python PDF library)"),
     ("pyfpdf", "PyFPDF / FPDF (Python PDF library)"),
     ("fpdf2", "FPDF2 (Python PDF library)"),
     ("weasyprint", "WeasyPrint (HTML to PDF generator)"),
     ("wkhtmltopdf", "wkhtmltopdf (WebKit PDF generator)"),
+    ("borb", "borb (Python PDF library)"),
+    ("pymupdf", "PyMuPDF (Python PDF library)"),
+    ("fitz", "PyMuPDF / Fitz (Python PDF library)"),
+    ("pypdf", "pypdf / PyPDF2 (Python PDF library)"),
+    ("steve canny", "Steve Canny (Default author artifact of python-pptx)"),
+    ("pandoc", "Pandoc document converter"),
+    ("marimo", "Marimo (Python reactive notebook export)"),
+    ("nbconvert", "Jupyter nbconvert (Automated notebook export)"),
+
+    # JavaScript / TypeScript / Node.js generators
+    ("pptxgenjs", "PptxGenJS (JavaScript PowerPoint library)"),
+    ("exceljs", "ExcelJS (JavaScript/Node.js Excel library)"),
+    ("sheetjs", "SheetJS / xlsx (JavaScript spreadsheet library)"),
+    ("docx.js", "docx (JavaScript Word library)"),
+    ("jspdf", "jsPDF (JavaScript PDF library)"),
+    ("pdfkit", "PDFKit (Node.js PDF library)"),
+    ("pdfmake", "pdfmake (JavaScript PDF library)"),
+    ("marp", "Marp (Markdown presentation compiler)"),
+    ("puppeteer", "Puppeteer (Headless Chrome automation)"),
+    ("playwright", "Playwright (Headless browser automation)"),
     ("chromium", "Chromium / Headless Chrome (Automated browser PDF renderer)"),
     ("skia", "Skia / Skia PDF (Google automated canvas renderer)"),
     ("headlesschrome", "Headless Chrome PDF generator"),
+
+    # Java / JVM generators
     ("apache poi", "Apache POI (Java Office library)"),
-    ("xlsxwriter", "XlsxWriter (Python Excel library)"),
-    ("steve canny", "Steve Canny (Default author artifact of python-pptx)"),
-    ("pandoc", "Pandoc document converter"),
+    ("docx4j", "docx4j (Java Office library)"),
     ("itext", "iText PDF library"),
+    ("openpdf", "OpenPDF (Java PDF library)"),
+    ("jasperreports", "JasperReports (Java reporting engine)"),
+    ("jaspersoft", "Jaspersoft (Java reporting engine)"),
+
+    # .NET / C# generators
+    ("epplus", "EPPlus (.NET Excel library)"),
+    ("closedxml", "ClosedXML (.NET Excel library)"),
+    ("npoi", "NPOI (.NET Office library)"),
+    ("questpdf", "QuestPDF (.NET PDF library)"),
+
+    # PHP generators
+    ("phpspreadsheet", "PhpSpreadsheet (PHP Excel library)"),
+    ("phpexcel", "PHPExcel (PHP legacy Excel library)"),
+    ("phpword", "PHPWord (PHP Word library)"),
+    ("tcpdf", "TCPDF (PHP PDF library)"),
+    ("mpdf", "mPDF (PHP PDF library)"),
+    ("dompdf", "dompdf (PHP HTML-to-PDF library)"),
+
+    # Go / Rust / Other generators
+    ("excelize", "Excelize (Go Excel library)"),
+    ("unioffice", "UniOffice (Go Office library)"),
+    ("typst", "Typst (Document compiler)"),
+    ("prince", "Prince / PrinceXML (HTML to PDF engine)"),
 ]
 
 KNOWN_AI_SIGNATURES = [
@@ -113,6 +159,21 @@ KNOWN_AI_SIGNATURES = [
     (r"\btome(\.app|\s+app)?\b", "Tome AI (AI storytelling & slides)"),
     (r"\bbeautiful\.ai\b", "Beautiful.ai (AI presentation maker)"),
     (r"\bslidesai\b", "SlidesAI (AI presentation generator)"),
+    (r"\bdecktopus\b", "Decktopus AI (AI presentation maker)"),
+    (r"\bpopai\b", "PopAI (AI presentation & workspace)"),
+    (r"\bplus\s+ai\b", "Plus AI (AI presentation maker)"),
+    (r"\bstorydoc\b", "Storydoc (AI interactive presentation tool)"),
+    (r"\bcuripod\b", "Curipod (AI presentation generator)"),
+    (r"\bmagicslides\b", "MagicSlides (AI presentation generator)"),
+    (r"\bchatba\b", "ChatBA (AI presentation maker)"),
+    (r"\bcanva\b", "Canva (Design & slide generator)"),
+    (r"\bpitch(\.com)?\b", "Pitch (Presentation software)"),
+    (r"\bslidesgo\b", "Slidesgo (Presentation generator)"),
+    (r"\bscispace\b|\btypeset(\.io)?\b", "SciSpace / Typeset (AI academic writing tool)"),
+    (r"\bjenni(\.ai|\s+ai)?\b", "Jenni AI (AI academic writing assistant)"),
+    (r"\bpaperpal\b", "Paperpal (AI academic writing tool)"),
+    (r"\bwordvice\b", "Wordvice AI (AI proofreading & writing tool)"),
+    (r"\bnotion\b", "Notion (Workspace document exporter)"),
     (r"\bmidjourney\b", "Midjourney (AI generative model)"),
     (r"\bstability\s*ai\b|\bstable\s+diffusion\b", "Stability AI / Stable Diffusion"),
     (r"\belevenlabs\b", "ElevenLabs (AI synthetic voice)"),
@@ -413,10 +474,13 @@ def _evaluate_generator_clues(result: Dict[str, Any]):
 
     # 3. Hardcoded library timestamp anomalies
     created_str = str(result.get("created") or "")
+    modified_str = str(result.get("modified") or "")
     if PYTHON_DOCX_DEFAULT_EPOCH in created_str:
         clues.append("Default python-docx hardcoded timestamp detected (2013-12-23 23:15:00 UTC)")
     if PYTHON_PPTX_DEFAULT_EPOCH in created_str:
         clues.append("Default python-pptx hardcoded timestamp detected (2013-01-27 09:14:16 UTC)")
+    if any(epoch in created_str for epoch in ["1970-01-01", "1601-01-01", "0001-01-01"]):
+        clues.append("Default system/Unix epoch timestamp detected in creation date")
 
     # 4. Revision count & editing time anomalies
     rev = result.get("revision")
@@ -424,6 +488,12 @@ def _evaluate_generator_clues(result: Dict[str, Any]):
 
     if rev in ["1", 1] and edit_time in ["0", 0, "1", 1]:
         clues.append("Single revision with near-zero editing time (indicative of programmatic export)")
+    elif edit_time in ["0", 0]:
+        clues.append("Zero editing duration recorded in file properties")
+
+    # Identical created & modified timestamps with revision 1
+    if created_str and modified_str and created_str == modified_str and rev in ["1", 1]:
+        clues.append("Identical creation and modification timestamps with single revision (instant export)")
 
     # 5. Synthesize risk level and verdict
     result["clues"] = clues
@@ -524,18 +594,40 @@ def _clean_core_xml(xml_bytes: bytes, author: Optional[str], created_iso: Option
 
 def _clean_app_xml(xml_bytes: bytes, app_name: str) -> bytes:
     root = ET.fromstring(xml_bytes)
+    found_app = False
+    found_ver = False
+    found_time = False
+
     for elem in list(root):
         tag = elem.tag.split("}")[-1]
         if tag in ["Company", "Manager"]:
             root.remove(elem)
         elif tag == "Application":
             elem.text = app_name
+            found_app = True
         elif tag == "AppVersion":
             elem.text = "16.0000"
+            found_ver = True
         elif tag == "TotalTime":
             elem.text = "45"
+            found_time = True
+
+    ep_ns = NS["ep"]
+    if not found_app:
+        app_el = ET.SubElement(root, f"{{{ep_ns}}}Application")
+        app_el.text = app_name
+    if not found_ver:
+        ver_el = ET.SubElement(root, f"{{{ep_ns}}}AppVersion")
+        ver_el.text = "16.0000"
+    if not found_time:
+        time_el = ET.SubElement(root, f"{{{ep_ns}}}TotalTime")
+        time_el.text = "45"
 
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+
+
+def _clean_custom_xml() -> bytes:
+    return b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties"></Properties>'
 
 
 def _cleanse_ooxml(
@@ -564,6 +656,8 @@ def _cleanse_ooxml(
                 data = _clean_core_xml(data, author=author, created_iso=created_iso)
             elif item.filename == "docProps/app.xml":
                 data = _clean_app_xml(data, app_name=app_name)
+            elif item.filename == "docProps/custom.xml":
+                data = _clean_custom_xml()
             zout.writestr(item, data)
 
 
