@@ -8,6 +8,19 @@ import base64
 import html
 import sys
 from pathlib import Path
+
+try:
+    import spaces
+except ImportError:
+    class _MockSpaces:
+        def GPU(self, fn=None, **kwargs):
+            if fn is not None:
+                return fn
+            def wrapper(f):
+                return f
+            return wrapper
+    spaces = _MockSpaces()
+
 import gradio as gr
 
 current_dir = Path(__file__).resolve().parent
@@ -541,6 +554,7 @@ def format_metadata_html(meta: dict) -> str:
     """
 
 
+@spaces.GPU(duration=60)
 def analyze_input(text_input, file_input, services_selected):
     meta_info = None
     if file_input is not None:

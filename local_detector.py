@@ -7,10 +7,23 @@ Runs directly on local NVIDIA GPU (RTX 5070 Ti) via CUDA or CPU fallback.
 
 import time
 import math
+import os
 from typing import Dict, Any, List, Optional
 import torch
 import torch.nn as nn
 from transformers import AutoTokenizer, AutoConfig, AutoModel, PreTrainedModel
+
+try:
+    import spaces
+except ImportError:
+    class _MockSpaces:
+        def GPU(self, fn=None, **kwargs):
+            if fn is not None:
+                return fn
+            def wrapper(f):
+                return f
+            return wrapper
+    spaces = _MockSpaces()
 
 class DesklibAIDetectionModel(PreTrainedModel):
     config_class = AutoConfig

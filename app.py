@@ -8,7 +8,20 @@ Or pass --cli to use the command line interface:
 """
 
 import sys
+import os
 from pathlib import Path
+
+try:
+    import spaces
+except ImportError:
+    class _MockSpaces:
+        def GPU(self, fn=None, **kwargs):
+            if fn is not None:
+                return fn
+            def wrapper(f):
+                return f
+            return wrapper
+    spaces = _MockSpaces()
 
 # Add current directory to path
 current_dir = Path(__file__).resolve().parent
