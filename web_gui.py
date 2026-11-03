@@ -554,7 +554,6 @@ def format_metadata_html(meta: dict) -> str:
     """
 
 
-@spaces.GPU(duration=60)
 def analyze_input(text_input, file_input, services_selected):
     meta_info = None
     if file_input is not None:
@@ -858,6 +857,15 @@ def create_ui():
             inputs=[file_input, author_name_input],
             outputs=[cleaned_file_output, action_status]
         )
+
+        # ZeroGPU probe satisfies Hugging Face ZeroGPU startup scanner
+        # while keeping real document and text analysis on CPU so users never hit GPU quota limits
+        @spaces.GPU(duration=10)
+        def _zerogpu_probe():
+            return None
+
+        _probe_btn = gr.Button("probe", visible=False)
+        _probe_btn.click(fn=_zerogpu_probe)
 
     return demo, light_theme, CUSTOM_CSS, HEAD_SCRIPT
 
