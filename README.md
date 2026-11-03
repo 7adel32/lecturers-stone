@@ -4,59 +4,61 @@
 
 # The Lecturer's Stone
 
-An academic-grade multi-engine AI content detector, container metadata forensics framework, and document cleanser.
+AI detector, with metadata checking, and cleansing.
 
-Combines transformer sequence classifiers, statistical NLP burstiness algorithms, and container XML forensics to inspect submissions, detect automated generator fingerprints (`openpyxl`, `python-docx`, `python-pptx`, `iText`, `ReportLab`), and cleanse document metadata while preserving original creation timelines.
+Checks probability of being AI written with a number of independent models and checks document metadata (.docx, .xlsx, .pptx, .pdf) for usual AI tells.
 
 ---
 
-## Architecture Overview
+## Why Check Metadata?
 
-Traditional AI detectors evaluate text semantics (perplexity, burstiness, token distribution) while remaining blind to document containers. In practical academic evaluation, container metadata is often the primary source of exposure:
-- Script-generated Word documents leave `Author: python-docx` and the default `2013-12-23` epoch.
-- Automated spreadsheets embed `openpyxl` in `docProps/app.xml`.
+Most AI detectors only check the text itself (patterns, repetition, burstiness) while completely ignoring the file it came in. But in practice, file metadata is often the biggest giveaway:
+- Script-generated Word documents leave `Author: python-docx` and a default `2013-12-23` date.
+- Auto-generated spreadsheets embed `openpyxl` in the file properties.
 - Generated presentations retain `generated using python-pptx` and `Steve Canny`.
 - Compiled PDFs expose `iText`, `ReportLab`, `pyFPDF`, or headless browser PDF converters.
+- Single edit revisions (`Rev = 1`) with `0` minutes spent editing.
 
-The Lecturer's Stone unifies **Container Forensics** and **Multi-Service AI Consensus** into a single evaluation pipeline.
+The Lecturer's Stone checks both **File Metadata** and **Multiple AI Detectors** in one place, and lets you clean metadata while keeping the original creation date intact.
 
 ---
 
-## Detection Capabilities
+## What It Checks
 
-### 1. Container Metadata Forensics
-- **Comprehensive Author Discovery**: Scans Dublin Core (`docProps/core.xml`), Extended Properties (`docProps/app.xml`), Custom Properties (`docProps/custom.xml`), comment threads (`word/comments.xml`, `ppt/commentAuthors.xml`, `xl/persons/person.xml`), and PDF XMP streams (`dc:creator`, `pdf:Author`).
-- **Programmatic Generator Clues**: Flags hardcoded library fingerprints including:
-  - `openpyxl` (Python Excel Library)
-  - `python-docx` (Python Word Library & default 2013 epoch)
-  - `python-pptx` (Python PowerPoint Library & default 2013 epoch)
-  - `ReportLab`, `pyFPDF`, `FPDF2`, `WeasyPrint`, `wkhtmltopdf` (PDF generation engines)
-  - `Chromium / Skia / Headless Chrome` (Automated browser PDF renderers)
-  - `Apache POI` (Java Office Library)
-  - `iText` (Java/C# PDF Library)
-  - `XlsxWriter` (Python Excel Library)
-- **Timeline & Editing Anomalies**: Identifies single revision counters (`Rev = 1`) with zero editing duration (`TotalTime = 0`), which indicate automated script exports.
+### 1. Metadata & File Details
+- **Author Discovery**: Finds all original authors, last modifiers, comment authors, and contributors across Word, Excel, PowerPoint, and PDF files.
+- **Usual AI & Script Tells**: Flags known library signatures including:
+  - `openpyxl` (Python Excel generator)
+  - `python-docx` (Python Word generator & default 2013 date)
+  - `python-pptx` (Python PowerPoint generator & default 2013 date)
+  - `ReportLab`, `pyFPDF`, `FPDF2`, `WeasyPrint`, `wkhtmltopdf` (PDF generators)
+  - `Chromium / Skia / Headless Chrome` (Browser-printed PDFs)
+  - `Apache POI` (Java Office library)
+  - `iText` (PDF library)
+  - `XlsxWriter` (Python Excel library)
+  - Common AI model tags (`ChatGPT`, `GPT-4`, `Claude`, `Anthropic`, `Gemini`, `DeepSeek`, `Copilot`, `Ollama`, etc.)
+- **Editing Time**: Flags files saved with 0 minutes of editing or only 1 revision.
 
-### 2. Multi-Service AI Content Detection
-- **Local Desklib DeBERTa (`desklib/ai-text-detector-v1.01`)**: Number 1 ranked model on the RAID AI Detection Benchmark. Runs locally on CUDA GPU (or CPU) with sliding window chunking across long documents.
-- **TrustSafeAI RADAR**: Adversarial AI text detector robust against paraphrasing and prompt manipulation.
-- **Fakespot AI Classifier**: Commercial-grade transformer sequence classifier.
-- **SzegedAI DeBERTa**: DeBERTa-based AI detector providing high-precision probability breakdowns.
+### 2. AI Content Detectors
+- **Local DeBERTa (`desklib/ai-text-detector-v1.01`)**: High-accuracy model from the RAID AI Detection Benchmark. Runs locally on CUDA GPU (or CPU) with sliding window chunking across long documents.
+- **TrustSafeAI RADAR**: Adversarial AI detector trained to catch paraphrased AI text.
+- **Fakespot AI Classifier**: Transformer text classifier.
+- **SzegedAI DeBERTa**: DeBERTa-based detector for fine-grained probability scores.
 - **PirateXX RoBERTa**: Multi-tier transformer detector.
-- **YugamJ LLM Detector**: Fine-tuned classification model calibrated for ChatGPT and modern LLM text.
-- **Heuristic & Burstiness Engine**: Offline statistical NLP engine measuring sentence length variance (burstiness coefficient of variation), type-token lexical diversity, and AI transition marker density.
+- **YugamJ LLM Detector**: Fine-tuned detector calibrated for ChatGPT and modern LLMs.
+- **Burstiness & Sentence Variation**: Offline analyzer measuring sentence length variety, word diversity, and common AI transition phrases.
 
 ---
 
-## Metadata Cleansing Engine
+## Cleaning Metadata
 
-The tool provides non-destructive metadata cleansing that maintains full document structural validity:
+The built-in cleaner strips identifying metadata while keeping the document working and looking normal:
 
-- Replaces Creator and Last Modifier with the configured author name (read from `LECTURERS_STONE_AUTHOR` or `--author`).
-- **Preserves Original Creation Date**: Keeps the authentic `dcterms:created` timestamp so the file does not appear artificially created at the moment of cleaning.
-- Scrubs automated library markers (`openpyxl`, `python-docx`, `python-pptx`, `iText`, `ReportLab`).
-- Clears environment leaks (Company, Manager, custom properties, template paths).
-- Sets realistic revision counters and standard application tags (`Microsoft Word`, `Microsoft Excel`, `Microsoft PowerPoint`).
+- Changes Creator and Last Modifier to your chosen author name (from `LECTURERS_STONE_AUTHOR` or `--author`).
+- **Keeps Original Creation Date**: Preserves the original file creation timestamp so it doesn't look like it was created two minutes ago.
+- Cleans script and generator tags (`openpyxl`, `python-docx`, `python-pptx`, `iText`, `ReportLab`, AI tools).
+- Removes company names, manager fields, and template paths.
+- Sets standard revision numbers and application names (`Microsoft Word`, `Microsoft Excel`, `Microsoft PowerPoint`).
 
 ---
 
@@ -64,7 +66,7 @@ The tool provides non-destructive metadata cleansing that maintains full documen
 
 ### Installation
 
-Clone the repository and install the dependencies:
+Clone the repository and install dependencies:
 
 ```powershell
 git clone https://github.com/7adel32/lecturers-stone.git
@@ -72,13 +74,13 @@ cd lecturers-stone
 pip install -r requirements.txt
 ```
 
-Copy the example environment configuration:
+Set up your default author name:
 
 ```powershell
 cp .env.example .env
 ```
 
-Edit `.env` to configure your default author name:
+Edit `.env` to configure your name:
 
 ```env
 LECTURERS_STONE_AUTHOR="Your Name"
@@ -88,43 +90,43 @@ LECTURERS_STONE_AUTHOR="Your Name"
 
 ## Command Line Usage
 
-### 1. Default Evaluation (AI + Metadata Forensics)
+### 1. Check Document (AI + Metadata)
 
-Analyzes both container metadata clues and runs all AI text detection engines:
+Checks metadata tells and runs all text detectors:
 
 ```powershell
-# Analyze Word Document
+# Word Document
 python cli.py -f "path\to\document.docx"
 
-# Analyze PDF Document
+# PDF Document
 python cli.py -f "path\to\document.pdf"
 
-# Analyze Spreadsheet or Presentation
+# Spreadsheet or Presentation
 python cli.py -f "path\to\sheet.xlsx"
 python cli.py -f "path\to\slides.pptx"
 ```
 
-### 2. Fast Metadata Inspection Only (Skip AI Inference)
+### 2. Fast Metadata Check Only (Skip AI Models)
 
-Inspects container metadata, author lists, and library fingerprints in under 0.2 seconds:
+Checks file metadata and script tells in under 0.2 seconds:
 
 ```powershell
 python cli.py -f "path\to\document.docx" --skip-ai
 ```
 
-### 3. Cleanse Document Metadata (Preserve Creation Date)
+### 3. Clean Document Metadata (Keep Original Date)
 
 ```powershell
 python cli.py -f "draft.docx" --cleanse "submission.docx" --skip-ai
 ```
 
-### 4. Plain Text Check
+### 4. Check Plain Text
 
 ```powershell
-python cli.py -t "Paste essay or article string here..."
+python cli.py -t "Paste essay or article text here..."
 ```
 
-### 5. JSON Export
+### 5. Export JSON Report
 
 ```powershell
 python cli.py -f "document.docx" --json --export "report.json"
@@ -132,20 +134,20 @@ python cli.py -f "document.docx" --json --export "report.json"
 
 ---
 
-## Interactive Web GUI
+## Web Dashboard
 
-Launch the Gradio dashboard locally at `http://127.0.0.1:7865`:
+Launch the dashboard locally at `http://127.0.0.1:7865`:
 
 ```powershell
 python app.py
 ```
 
-The Web interface allows:
-- Click the Stone logo to toggle Dark / Light mode with radiant glowing accents (`#d33538` & `#ffe082`).
-- Drag-and-drop document uploads (`.docx`, `.xlsx`, `.pptx`, `.pdf`, `.txt`, `.md`).
-- Real-time consensus score bar and individual engine breakdowns.
-- Metadata forensics card displaying all detected authors, creation dates, and library fingerprints.
-- One-click button to download Cleansed files directly from the browser.
+Features:
+- Click the Stone logo to toggle Dark / Light mode.
+- Drag-and-drop document upload (`.docx`, `.xlsx`, `.pptx`, `.pdf`, `.txt`, `.md`).
+- Overall AI probability bar and individual detector breakdowns.
+- Metadata details showing found authors, timestamps, and generator tells.
+- One-click button to download cleaned documents directly.
 
 ---
 
@@ -156,11 +158,11 @@ lecturers-stone/
 ├── app.py                # Main entry point (launches Web GUI or CLI)
 ├── cli.py                # Standalone command-line interface
 ├── web_gui.py            # Gradio Web dashboard
-├── checker_hub.py        # Multi-service AI detection consensus framework
-├── metadata_forensics.py # Metadata inspector, clue finder, and cleanser
+├── checker_hub.py        # Multi-model AI detection framework
+├── metadata_forensics.py # Metadata inspector, clue finder, and cleaner
 ├── local_detector.py     # Local DeBERTa GPU model runner (CUDA / CPU)
-├── heuristic_engine.py   # Statistical burstiness & lexical diversity engine
-├── document_parser.py    # Multi-format document parser (DOCX, XLSX, PPTX, PDF, TXT)
+├── heuristic_engine.py   # Burstiness & sentence variation engine
+├── document_parser.py    # Document text parser (DOCX, XLSX, PPTX, PDF, TXT)
 ├── requirements.txt      # Project dependencies
 ├── LICENSE               # MIT License
 ├── .env.example          # Sample environment configuration
