@@ -380,10 +380,12 @@ def create_ui():
         table_radius="8px"
     )
 
-    logo_path = current_dir / "assets" / "logo.png"
+    logo_path = current_dir / "assets" / "logo_stone.png"
+    if not logo_path.is_file():
+        logo_path = current_dir / "assets" / "logo.png"
     if logo_path.is_file():
         logo_b64 = base64.b64encode(logo_path.read_bytes()).decode("utf-8")
-        logo_html = f'<img src="data:image/png;base64,{logo_b64}" alt="Logo" style="height: 68px; width: auto; object-fit: contain; border-radius: 8px;" />'
+        logo_html = f'<img src="data:image/png;base64,{logo_b64}" alt="Logo" style="height: 102px; width: auto; object-fit: contain; border-radius: 8px;" />'
     else:
         logo_html = ""
 
