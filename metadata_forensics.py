@@ -87,6 +87,38 @@ KNOWN_GENERATOR_SIGNATURES = [
     ("itext", "iText PDF library"),
 ]
 
+KNOWN_AI_SIGNATURES = [
+    (r"\bopenai\b", "OpenAI (AI research & model developer)"),
+    (r"\bchatgpt\b", "ChatGPT (OpenAI conversational model)"),
+    (r"\bgpt-[345o]\b|\bgpt-4o\b|\bgpt-o1\b|\bgpt-o3\b", "GPT Model Family (OpenAI)"),
+    (r"\banthropic\b", "Anthropic (AI safety & LLM lab)"),
+    (r"\bclaude\b", "Claude (Anthropic conversational LLM)"),
+    (r"\bgoogle\s+deepmind\b|\bdeepmind\b", "Google DeepMind"),
+    (r"\bgemini\b", "Google Gemini (Multimodal LLM)"),
+    (r"\bcopilot\b|\bmicrosoft\s+copilot\b", "Microsoft Copilot (AI assistant)"),
+    (r"\bperplexity\b", "Perplexity AI"),
+    (r"\bdeepseek\b", "DeepSeek (AI model developer)"),
+    (r"\bmistral\s+ai\b|\bmistral\b", "Mistral AI"),
+    (r"\bllama[-_ ]?[23]?\b", "Meta LLaMA (Open weight LLM)"),
+    (r"\bhugging\s*face\b", "Hugging Face"),
+    (r"\bollama\b", "Ollama (Local LLM environment)"),
+    (r"\bvllm\b", "vLLM (LLM serving engine)"),
+    (r"\bgroq\b", "Groq (AI accelerator/cloud)"),
+    (r"\bquillbot\b", "QuillBot (AI rewriting & paraphrasing tool)"),
+    (r"\bjasper(\.ai|\s+ai)?\b", "Jasper AI (AI content platform)"),
+    (r"\bcopy\.ai\b", "Copy.ai (AI writing tool)"),
+    (r"\bwritesonic\b", "Writesonic (AI content generator)"),
+    (r"\brytr\b", "Rytr (AI writer)"),
+    (r"\bgamma(\.app|\s+app)?\b", "Gamma (AI presentation & document generator)"),
+    (r"\btome(\.app|\s+app)?\b", "Tome AI (AI storytelling & slides)"),
+    (r"\bbeautiful\.ai\b", "Beautiful.ai (AI presentation maker)"),
+    (r"\bslidesai\b", "SlidesAI (AI presentation generator)"),
+    (r"\bmidjourney\b", "Midjourney (AI generative model)"),
+    (r"\bstability\s*ai\b|\bstable\s+diffusion\b", "Stability AI / Stable Diffusion"),
+    (r"\belevenlabs\b", "ElevenLabs (AI synthetic voice)"),
+    (r"\bnotebooklm\b", "Google NotebookLM (AI research assistant)"),
+]
+
 PYTHON_DOCX_DEFAULT_EPOCH = "2013-12-23"
 PYTHON_PPTX_DEFAULT_EPOCH = "2013-01-27"
 
@@ -363,36 +395,44 @@ def _evaluate_generator_clues(result: Dict[str, Any]):
         str(result.get("application") or ""),
         str(result.get("company") or ""),
         str(result.get("manager") or ""),
-        " ".join(str(v) for v in result.get("raw_properties", {}).values())
+        " ".join(result.get("all_authors", [])),
+        " ".join(result.get("comment_authors", [])),
+        " ".join(str(v) for v in result.get("raw_properties", {}).values()),
+        " ".join(str(v) for v in result.get("environment_details", {}).values())
     ]).lower()
 
-    # 1. Match known generator library signatures
+    # 1. Match known AI provider, model, and assistant signatures
+    for pattern, desc in KNOWN_AI_SIGNATURES:
+        if re.search(pattern, combined_text, re.IGNORECASE):
+            clues.append(f"Identified AI provider / model signature: {desc}")
+
+    # 2. Match known generator library signatures
     for sig, desc in KNOWN_GENERATOR_SIGNATURES:
         if sig in combined_text:
             clues.append(f"Identified automated library signature: {desc}")
 
-    # 2. Hardcoded library timestamp anomalies
+    # 3. Hardcoded library timestamp anomalies
     created_str = str(result.get("created") or "")
     if PYTHON_DOCX_DEFAULT_EPOCH in created_str:
         clues.append("Default python-docx hardcoded timestamp detected (2013-12-23 23:15:00 UTC)")
     if PYTHON_PPTX_DEFAULT_EPOCH in created_str:
         clues.append("Default python-pptx hardcoded timestamp detected (2013-01-27 09:14:16 UTC)")
 
-    # 3. Revision count & editing time anomalies
+    # 4. Revision count & editing time anomalies
     rev = result.get("revision")
     edit_time = result.get("total_edit_time_min")
 
     if rev in ["1", 1] and edit_time in ["0", 0, "1", 1]:
         clues.append("Single revision with near-zero editing time (indicative of programmatic export)")
 
-    # 4. Synthesize risk level and verdict
+    # 5. Synthesize risk level and verdict
     result["clues"] = clues
     if clues:
         result["risk_level"] = "HIGH_RISK"
-        result["verdict"] = f"Document contains {len(clues)} programmatic metadata signature(s)"
+        result["verdict"] = f"Document contains {len(clues)} AI / programmatic signature(s)"
     elif result.get("creator") or result.get("application") or result.get("created"):
         result["risk_level"] = "STANDARD"
-        result["verdict"] = "Document metadata present without known programmatic library signatures"
+        result["verdict"] = "Document metadata present without known AI or programmatic signatures"
     else:
         result["risk_level"] = "STRIPPED"
         result["verdict"] = "Clean / stripped metadata (no identifying markers)"
