@@ -1,12 +1,3 @@
----
-title: The Lecturers Stone
-colorFrom: red
-colorTo: yellow
-sdk: gradio
-app_file: app.py
-pinned: false
----
-
 <p align="center">
   <img src="assets/logo_stone.png" width="180" alt="The Lecturer's Stone Logo" />
 </p>
