@@ -33,47 +33,59 @@ CUSTOM_CSS = """
     box-shadow: none !important;
 }
 
+/* Override Gradio built-in prose black borders on tables and cells */
+.gradio-container .prose table,
+.gradio-container .prose tr,
+.gradio-container .prose td,
+.gradio-container .prose th,
+.service-table-card table,
+.service-table-card tr,
+.service-table-card td,
+.service-table-card th {
+    border: none !important;
+}
+
 /* Service Table Card Container with unified 8px radius */
 .service-table-card {
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    overflow: hidden;
-    background: #ffffff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
     margin-top: 4px;
 }
 
 .service-table-card table {
-    width: 100%;
+    width: 100% !important;
     border-collapse: collapse !important;
     border: none !important;
     margin: 0 !important;
     padding: 0 !important;
-    font-size: 13.5px;
-    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    table-layout: fixed;
+    font-size: 13.5px !important;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    table-layout: fixed !important;
 }
 
 .service-table-card th {
-    padding: 12px 16px;
-    font-weight: 600;
-    font-size: 12.5px;
-    color: #475569;
-    background-color: #f8fafc;
+    padding: 12px 16px !important;
+    font-weight: 600 !important;
+    font-size: 12.5px !important;
+    color: #475569 !important;
+    background-color: #f8fafc !important;
     border: none !important;
     border-bottom: 1px solid #e2e8f0 !important;
-    text-align: left;
+    text-align: left !important;
 }
 
 .service-table-card td {
-    padding: 12px 16px;
+    padding: 12px 16px !important;
     border: none !important;
     border-bottom: 1px solid #f1f5f9 !important;
-    color: #1e293b;
-    vertical-align: middle;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    color: #1e293b !important;
+    vertical-align: middle !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
 }
 
 .service-table-card tr:last-child td {
@@ -81,7 +93,7 @@ CUSTOM_CSS = """
 }
 
 .service-table-card tr:hover td {
-    background-color: #f8fafc;
+    background-color: #f8fafc !important;
 }
 """
 
@@ -240,47 +252,51 @@ def analyze_input(text_input, file_input, services_selected, sapling_key):
         lat = s.get("latency_sec", 0.0)
         label = s.get("label", "Unknown")
 
+        # Only display classifiers that successfully executed and produced a probability score
         if status == "success" and prob is not None:
             service_scores[s_name] = prob
             pct_val = f"{prob * 100:.1f}%"
             badge = f"<span style='background-color: {'#fee2e2' if prob >= 0.5 else '#dcfce7'}; color: {'#dc2626' if prob >= 0.5 else '#16a34a'}; border: 1px solid {'#fca5a5' if prob >= 0.5 else '#86efac'}; padding: 2px 8px; border-radius: 6px; font-weight: 600; font-size: 11.5px; display: inline-block;'>{label}</span>"
-        else:
-            pct_val = "N/A"
-            escaped_status = html.escape(str(status))
-            badge = f"<span style='background-color: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; padding: 2px 8px; border-radius: 6px; font-weight: 500; font-size: 11.5px; display: inline-block;' title='{escaped_status}'>Unavailable</span>"
 
-        table_rows.append(f"""
-        <tr>
-            <td style="color: #0f172a; font-weight: 600;">{s_name}</td>
-            <td>{badge}</td>
-            <td style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; color: #334155;">{pct_val}</td>
-            <td style="color: #64748b;">{lat}s</td>
-        </tr>
-        """)
+            table_rows.append(f"""
+            <tr>
+                <td style="color: #0f172a; font-weight: 600;">{s_name}</td>
+                <td>{badge}</td>
+                <td style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; color: #334155;">{pct_val}</td>
+                <td style="color: #64748b;">{lat}s</td>
+            </tr>
+            """)
 
-    table_html = f"""
-    <div class="service-table-card">
-        <table>
-            <colgroup>
-                <col style="width: 38%;">
-                <col style="width: 28%;">
-                <col style="width: 20%;">
-                <col style="width: 14%;">
-            </colgroup>
-            <thead>
-                <tr>
-                    <th>Service Name</th>
-                    <th>Verdict</th>
-                    <th>AI Confidence</th>
-                    <th>Latency</th>
-                </tr>
-            </thead>
-            <tbody>
-                {"".join(table_rows)}
-            </tbody>
-        </table>
-    </div>
-    """
+    if table_rows:
+        table_html = f"""
+        <div class="service-table-card">
+            <table>
+                <colgroup>
+                    <col style="width: 38%;">
+                    <col style="width: 28%;">
+                    <col style="width: 20%;">
+                    <col style="width: 14%;">
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>Service Name</th>
+                        <th>Verdict</th>
+                        <th>AI Confidence</th>
+                        <th>Latency</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {"".join(table_rows)}
+                </tbody>
+            </table>
+        </div>
+        """
+    else:
+        table_html = """
+        <div class="service-table-card" style="padding: 16px; text-align: center; color: #64748b; font-size: 13.5px;">
+            No classifiers completed successfully for this input.
+        </div>
+        """
 
     preview_text = content[:1000] + ("..." if len(content) > 1000 else "")
     return verdict_html, meta_html, service_scores, table_html, preview_text
@@ -401,9 +417,9 @@ def create_ui():
             outputs=[cleaned_file_output, action_status]
         )
 
-    return demo
+    return demo, light_theme, CUSTOM_CSS
 
 
 if __name__ == "__main__":
-    demo = create_ui()
-    demo.launch(server_name="127.0.0.1", server_port=7865)
+    demo, theme, css = create_ui()
+    demo.launch(server_name="127.0.0.1", server_port=7865, theme=theme, css=css)
