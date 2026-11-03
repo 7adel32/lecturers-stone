@@ -35,6 +35,9 @@ CUSTOM_CSS = """
     --stone-progress-bg: #f1f5f9;
     --stone-table-th-bg: #f8fafc;
     --stone-table-hover: #f8fafc;
+    --stone-safe-color: #475569;
+    --stone-safe-badge-border: #94a3b8;
+    --stone-safe-bar: #64748b;
 }
 
 /* Global unified 8px radius across interactive components */
@@ -44,9 +47,10 @@ CUSTOM_CSS = """
 
 /* Gradio Container styling with UI gradient glow */
 .gradio-container {
-    max-width: 1240px !important;
+    width: 94% !important;
+    max-width: 1680px !important;
     margin: 24px auto !important;
-    padding: 24px 32px !important;
+    padding: 28px 36px !important;
     border-radius: 14px !important;
     transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease !important;
 }
@@ -62,39 +66,42 @@ html:not(.dark), body:not(.dark) {
     background-color: #f8fafc !important;
 }
 
-/* Dark mode styling and radiant UI gradient glow */
+/* Dark mode styling and radiant UI gradient glow (pure neutral charcoal, zero blue tint) */
 .dark, [data-theme="dark"] {
     color-scheme: dark !important;
-    --body-background-fill: #0a0e17 !important;
-    --body-text-color: #f1f5f9 !important;
-    --block-background-fill: #111726 !important;
-    --block-border-color: #1e293b !important;
-    --background-fill-primary: #111726 !important;
-    --background-fill-secondary: #0a0e17 !important;
-    --border-color-primary: #1e293b !important;
-    background-color: #0a0e17 !important;
-    color: #f1f5f9 !important;
+    --body-background-fill: #111113 !important;
+    --body-text-color: #f4f4f5 !important;
+    --block-background-fill: #18181b !important;
+    --block-border-color: #27272a !important;
+    --background-fill-primary: #18181b !important;
+    --background-fill-secondary: #111113 !important;
+    --border-color-primary: #27272a !important;
+    background-color: #111113 !important;
+    color: #f4f4f5 !important;
 
-    --stone-card-bg: #111726;
-    --stone-card-border: #1e293b;
-    --stone-divider: #1e293b;
-    --stone-text-main: #f8fafc;
-    --stone-text-body: #cbd5e1;
-    --stone-text-sub: #94a3b8;
-    --stone-text-muted: #64748b;
-    --stone-progress-bg: #1e293b;
-    --stone-table-th-bg: #162032;
-    --stone-table-hover: #1a2538;
+    --stone-card-bg: #18181b;
+    --stone-card-border: #27272a;
+    --stone-divider: #27272a;
+    --stone-text-main: #f4f4f5;
+    --stone-text-body: #d4d4d8;
+    --stone-text-sub: #a1a1aa;
+    --stone-text-muted: #71717a;
+    --stone-progress-bg: #222226;
+    --stone-table-th-bg: #1e1e22;
+    --stone-table-hover: #26262a;
+    --stone-safe-color: #e4e4e7;
+    --stone-safe-badge-border: #71717a;
+    --stone-safe-bar: #a1a1aa;
 }
 
 .dark html, .dark body {
-    background-color: #0a0e17 !important;
+    background-color: #111113 !important;
 }
 
 .dark .gradio-container {
     box-shadow: 0 0 50px -6px rgba(211, 53, 56, 0.38), 0 0 25px -3px rgba(255, 224, 130, 0.28) !important;
     border: 1px solid rgba(211, 53, 56, 0.35) !important;
-    background-color: #0a0e17 !important;
+    background-color: #111113 !important;
 }
 
 /* Strip all intermediate Gradio wrappers to prevent double borders or background clashes */
@@ -226,7 +233,7 @@ button.primary:active, .gradio-container button.primary:active {
 .dark .metadata-card {
     background: transparent !important;
     background-color: transparent !important;
-    border: 1px solid #1e293b !important;
+    border: 1px solid #27272a !important;
     box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 16px -4px rgba(211, 53, 56, 0.18) !important;
 }
 
@@ -330,15 +337,15 @@ progress::-moz-progress-bar,
     border: none !important;
     margin: 0 !important;
     padding: 0 !important;
-    font-size: 13.5px !important;
+    font-size: 13px !important;
     font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     table-layout: fixed !important;
 }
 
 .service-table-card th {
-    padding: 12px 16px !important;
+    padding: 9px 10px !important;
     font-weight: 600 !important;
-    font-size: 12.5px !important;
+    font-size: 12px !important;
     color: var(--stone-text-sub) !important;
     background-color: var(--stone-table-th-bg) !important;
     border: none !important;
@@ -347,7 +354,7 @@ progress::-moz-progress-bar,
 }
 
 .service-table-card td {
-    padding: 12px 16px !important;
+    padding: 9px 10px !important;
     border: none !important;
     border-bottom: 1px solid var(--stone-divider) !important;
     color: var(--stone-text-main) !important;
@@ -365,29 +372,34 @@ progress::-moz-progress-bar,
     background-color: var(--stone-table-hover) !important;
 }
 
-/* Dark mode inputs, textareas, dropzones */
+/* Dark mode inputs, textareas, dropzones (neutral obsidian charcoal) */
 .dark textarea, .dark input[type="text"] {
-    background-color: #111726 !important;
-    color: #f8fafc !important;
-    border-color: #1e293b !important;
+    background-color: #18181b !important;
+    color: #f4f4f5 !important;
+    border-color: #27272a !important;
 }
 
 .dark .file-preview, .dark [data-testid="file-upload"], .dark .upload_zone {
-    background-color: #111726 !important;
-    border-color: #1e293b !important;
-    color: #cbd5e1 !important;
+    background-color: #18181b !important;
+    border-color: #27272a !important;
+    color: #d4d4d8 !important;
 }
 
 .dark .label-wrap, .dark .gr-accordion {
-    background-color: #111726 !important;
-    border-color: #1e293b !important;
-    color: #f8fafc !important;
+    background-color: #18181b !important;
+    border-color: #27272a !important;
+    color: #f4f4f5 !important;
 }
 
 .dark button:not(.primary) {
-    background-color: #162032 !important;
-    color: #e2e8f0 !important;
-    border-color: #1e293b !important;
+    background-color: #222226 !important;
+    color: #e4e4e7 !important;
+    border-color: #333338 !important;
+}
+
+.dark button:not(.primary):hover {
+    background-color: #2a2a30 !important;
+    border-color: #44444c !important;
 }
 """
 
@@ -478,16 +490,10 @@ def format_metadata_html(meta: dict) -> str:
     risk = meta.get("risk_level", "CLEAN")
     if risk == "HIGH_RISK":
         risk_color = "#dc2626"
-        badge_bg = "#fee2e2"
-        badge_border = "#fca5a5"
     elif risk == "STANDARD":
-        risk_color = "#16a34a"
-        badge_bg = "#dcfce7"
-        badge_border = "#86efac"
+        risk_color = "var(--stone-safe-color, #e4e4e7)"
     else:
-        risk_color = "#2563eb"
-        badge_bg = "#dbeafe"
-        badge_border = "#93c5fd"
+        risk_color = "#3b82f6"
 
     clues = meta.get("clues", [])
     if clues:
@@ -571,7 +577,7 @@ def analyze_input(text_input, file_input, services_selected):
 
     if total_valid == 0:
         badge_color = "#64748b"
-        badge_bg = "#f1f5f9"
+        bar_color = "#64748b"
         pct_display = "N/A"
         progress_width = 0
         consensus_summary = "No active text classifiers evaluated (0 extractable words)"
@@ -579,16 +585,16 @@ def analyze_input(text_input, file_input, services_selected):
     else:
         if consensus_pct >= 70:
             badge_color = "#dc2626"
-            badge_bg = "#fee2e2"
+            bar_color = "#dc2626"
         elif consensus_pct >= 50:
             badge_color = "#ea580c"
-            badge_bg = "#ffedd5"
+            bar_color = "#ea580c"
         elif consensus_pct >= 35:
             badge_color = "#ca8a04"
-            badge_bg = "#fef9c3"
+            bar_color = "#ca8a04"
         else:
-            badge_color = "#16a34a"
-            badge_bg = "#dcfce7"
+            badge_color = "var(--stone-safe-color, #e4e4e7)"
+            bar_color = "var(--stone-safe-bar, #a1a1aa)"
         pct_display = f"{consensus_pct}%"
         progress_width = consensus_pct
         consensus_summary = f"Consensus: <b style='color: var(--stone-text-main);'>{ai_votes} AI</b> vs <b style='color: var(--stone-text-main);'>{human_votes} Human</b> (out of {total_valid} engines)"
@@ -596,18 +602,24 @@ def analyze_input(text_input, file_input, services_selected):
 
     verdict_html = f"""
     <div class="verdict-card" style="padding: 20px; margin-bottom: 14px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <span style="font-size: 13.5px; color: var(--stone-text-muted);">Source: <b style="color: var(--stone-text-main);">{source_desc}</b> ({results['document_stats']['words']} words, {results['document_stats']['characters']} chars)</span>
-            <span class="verdict-badge" style="background: transparent !important; background-color: transparent !important; color: {badge_color}; border: 1.5px solid {badge_color}; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 12.5px;">
-                {verdict}
-            </span>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 12px;">
+            <div style="min-width: 0; flex: 1;">
+                <span style="font-size: 13px; color: var(--stone-text-muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{html.escape(source_desc)}">
+                    Source: <b style="color: var(--stone-text-main);">{html.escape(source_desc)}</b> ({results['document_stats']['words']} words, {results['document_stats']['characters']} chars)
+                </span>
+            </div>
+            <div style="flex-shrink: 0; white-space: nowrap;">
+                <span class="verdict-badge" style="background: transparent !important; background-color: transparent !important; color: {badge_color}; border: 1.5px solid {badge_color}; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 12px; white-space: nowrap; display: inline-block;">
+                    {verdict}
+                </span>
+            </div>
         </div>
         <div style="display: flex; align-items: baseline; gap: 12px;">
             <h2 style="margin: 0; font-size: 38px; font-weight: 800; color: {badge_color};">{pct_display}</h2>
             <span style="font-size: 16px; color: var(--stone-text-sub); font-weight: 500;">Consensus AI Probability</span>
         </div>
         <div style="margin-top: 12px; background: var(--stone-progress-bg); border-radius: 6px; height: 10px; overflow: hidden; border: 1px solid var(--stone-card-border);">
-            <div style="background: {badge_color}; height: 100%; width: {progress_width}%; border-radius: 5px;"></div>
+            <div style="background: {bar_color}; height: 100%; width: {progress_width}%; border-radius: 5px;"></div>
         </div>
         <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12.5px; color: var(--stone-text-muted);">
             <span>{consensus_summary}</span>
@@ -618,25 +630,38 @@ def analyze_input(text_input, file_input, services_selected):
 
     meta_html = format_metadata_html(meta_info)
 
+    name_map = {
+        "Local Desklib DeBERTa (RTX 5070 Ti / CUDA)": "Local Desklib DeBERTa",
+        "TrustSafeAI RADAR (Adversarial Detector)": "TrustSafeAI RADAR",
+        "SzegedAI (DeBERTa AI Detector)": "SzegedAI DeBERTa",
+        "PirateXX RoBERTa Detector": "PirateXX RoBERTa",
+        "Heuristic & Burstiness Engine": "Heuristic & Burstiness",
+        "Fakespot AI Text Classifier": "Fakespot Classifier",
+        "YugamJ LLM Text Detector": "YugamJ Detector"
+    }
+
     table_rows = []
     for s in results["services"]:
-        s_name = s.get("service_name")
+        s_name = s.get("service_name", "Service")
         prob = s.get("ai_probability")
         status = s.get("status")
         lat = s.get("latency_sec", 0.0)
         label = s.get("label", "Unknown")
+        display_name = name_map.get(s_name, s_name)
 
         # Exclude empty/none, insufficient text, and non-running services
         if status == "success" and prob is not None and label not in ["Empty Input", "Empty / None", "Empty", "None", "No Extractable Text", "Insufficient Text", "Insufficient Text (< 10 words)"]:
             pct_val = f"{prob * 100:.1f}%"
-            badge = f"<span class='service-badge' style='background: transparent !important; background-color: transparent !important; color: {'#ef4444' if prob >= 0.5 else '#22c55e'}; border: 1px solid {'#ef4444' if prob >= 0.5 else '#22c55e'}; padding: 2px 8px; border-radius: 6px; font-weight: 600; font-size: 11.5px; display: inline-block;'>{label}</span>"
+            badge_text_color = "#ef4444" if prob >= 0.5 else "var(--stone-safe-color, #e4e4e7)"
+            badge_border_color = "#ef4444" if prob >= 0.5 else "var(--stone-safe-badge-border, #71717a)"
+            badge = f"<span class='service-badge' style='background: transparent !important; background-color: transparent !important; color: {badge_text_color}; border: 1px solid {badge_border_color}; padding: 2px 7px; border-radius: 5px; font-weight: 600; font-size: 11px; white-space: nowrap; display: inline-block;'>{label}</span>"
 
             table_rows.append(f"""
             <tr>
-                <td style="color: var(--stone-text-main); font-weight: 600;">{s_name}</td>
+                <td style="color: var(--stone-text-main); font-weight: 600; padding-left: 12px;" title="{html.escape(s_name)}">{html.escape(display_name)}</td>
                 <td>{badge}</td>
-                <td style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; color: var(--stone-text-body);">{pct_val}</td>
-                <td style="color: var(--stone-text-muted);">{lat}s</td>
+                <td style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; color: var(--stone-text-body); text-align: right; overflow: visible; text-overflow: clip;">{pct_val}</td>
+                <td style="color: var(--stone-text-muted); text-align: right; padding-right: 12px; overflow: visible; text-overflow: clip;">{lat:.2f}s</td>
             </tr>
             """)
 
@@ -645,17 +670,17 @@ def analyze_input(text_input, file_input, services_selected):
         <div class="service-table-card">
             <table>
                 <colgroup>
-                    <col style="width: 38%;">
-                    <col style="width: 28%;">
-                    <col style="width: 20%;">
-                    <col style="width: 14%;">
+                    <col style="width: 45%;">
+                    <col style="width: 29%;">
+                    <col style="width: 15%;">
+                    <col style="width: 11%;">
                 </colgroup>
                 <thead>
                     <tr>
-                        <th>Service Name</th>
+                        <th style="padding-left: 12px;">Service Name</th>
                         <th>Verdict</th>
-                        <th>AI Confidence</th>
-                        <th>Latency</th>
+                        <th style="text-align: right;">AI Confidence</th>
+                        <th style="text-align: right; padding-right: 12px;">Latency</th>
                     </tr>
                 </thead>
                 <tbody>
