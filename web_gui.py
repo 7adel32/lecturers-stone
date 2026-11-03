@@ -810,16 +810,27 @@ def create_ui():
 
     service_choices = []
     if has_local or is_hf:
-        service_choices.append("local_deberta")
-    service_choices.extend(["radar", "fakespot", "yugamj", "piratexx", "heuristic"])
+        if is_hf:
+            deberta_label = "DeBERTa Model (Consumes HF ZeroGPU Quota/Credits)"
+        else:
+            deberta_label = "Local Desklib DeBERTa (RTX 5070 Ti / CUDA)"
+        service_choices.append((deberta_label, "local_deberta"))
+
+    service_choices.extend([
+        ("TrustSafeAI RADAR (Adversarial Detector)", "radar"),
+        ("Fakespot AI Text Classifier", "fakespot"),
+        ("YugamJ LLM Text Detector", "yugamj"),
+        ("PirateXX RoBERTa Detector", "piratexx"),
+        ("Heuristic & Burstiness Engine (Offline)", "heuristic")
+    ])
 
     # On Hugging Face Space: default is fast CPU-only (zero quota consumption)
-    # but local_deberta is available as an opt-in checkbox!
-    # On local PC: default includes local_deberta (runs on RTX 5070 Ti in 0.05s)
+    # but DeBERTa is available as an opt-in checkbox with quota warning!
+    # On local PC: default includes local DeBERTa (runs on RTX 5070 Ti in 0.05s)
     if is_hf:
         service_defaults = ["radar", "fakespot", "yugamj", "piratexx", "heuristic"]
     else:
-        service_defaults = list(service_choices)
+        service_defaults = [val for _, val in service_choices]
 
     with gr.Blocks(title="The Lecturer's Stone") as demo:
         gr.HTML(header_html)
