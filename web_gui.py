@@ -422,7 +422,88 @@ progress::-moz-progress-bar,
 }
 """
 
-HEAD_SCRIPT = """
+# Base64 encoded 32x32 PNG favicon of the Philosopher's Stone
+FAVICON_BASE64 = (
+    "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"
+)
+
+FAVICON_DATA_URI = f"data:image/png;base64,{FAVICON_BASE64}"
+
+FAVICON_HEAD = f"""
+<link rel="icon" type="image/png" sizes="32x32" href="{FAVICON_DATA_URI}" />
+<link rel="shortcut icon" type="image/png" href="{FAVICON_DATA_URI}" />
+<link rel="apple-touch-icon" href="{FAVICON_DATA_URI}" />
+<script>
+    (function() {{
+        const stoneIconUri = "{FAVICON_DATA_URI}";
+        function forceStoneFavicon() {{
+            try {{
+                const links = document.querySelectorAll("link[rel*='icon']");
+                if (!links.length) {{
+                    const l = document.createElement("link");
+                    l.rel = "shortcut icon";
+                    l.type = "image/png";
+                    l.href = stoneIconUri;
+                    document.head.appendChild(l);
+                }} else {{
+                    links.forEach(function(l) {{
+                        l.type = "image/png";
+                        l.href = stoneIconUri;
+                    }});
+                }}
+            }} catch (e) {{}}
+        }}
+
+        forceStoneFavicon();
+        if (document.readyState === 'loading') {{
+            document.addEventListener('DOMContentLoaded', forceStoneFavicon);
+        }}
+        window.addEventListener('load', forceStoneFavicon);
+
+        // Keep favicon pinned against dynamic framework injections
+        try {{
+            const observer = new MutationObserver(function() {{
+                document.querySelectorAll("link[rel*='icon']").forEach(function(l) {{
+                    if (l.getAttribute("href") !== stoneIconUri) {{
+                        l.type = "image/png";
+                        l.href = stoneIconUri;
+                    }}
+                }});
+            }});
+            if (document.head) {{
+                observer.observe(document.head, {{ childList: true, subtree: true }});
+            }}
+        }} catch (e) {{}}
+    }})();
+</script>
+"""
+
+HEAD_SCRIPT = FAVICON_HEAD + """
 <script>
     (function() {
         const mediaQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
