@@ -231,6 +231,14 @@ button.primary:active, .gradio-container button.primary:active {
     box-shadow: none !important;
 }
 
+/* Hide Hugging Face floating space header pill */
+#huggingface-space-header {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
 /* Custom Cards (Verdict & Forensics) */
 .verdict-card, .metadata-card {
     background-color: var(--stone-card-bg) !important;
@@ -458,6 +466,14 @@ FAVICON_HEAD = f"""
 <link rel="icon" type="image/png" sizes="32x32" href="{FAVICON_DATA_URI}" />
 <link rel="shortcut icon" type="image/png" href="{FAVICON_DATA_URI}" />
 <link rel="apple-touch-icon" href="{FAVICON_DATA_URI}" />
+<style>
+#huggingface-space-header {{
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}}
+</style>
 <script>
     (function() {{
         const stoneIconUri = "{FAVICON_DATA_URI}";
@@ -479,13 +495,27 @@ FAVICON_HEAD = f"""
             }} catch (e) {{}}
         }}
 
-        forceStoneFavicon();
-        if (document.readyState === 'loading') {{
-            document.addEventListener('DOMContentLoaded', forceStoneFavicon);
+        function removeHfHeader() {{
+            try {{
+                const hf = document.getElementById('huggingface-space-header');
+                if (hf) hf.remove();
+            }} catch (e) {{}}
         }}
-        window.addEventListener('load', forceStoneFavicon);
 
-        // Keep favicon pinned against dynamic framework injections
+        forceStoneFavicon();
+        removeHfHeader();
+        if (document.readyState === 'loading') {{
+            document.addEventListener('DOMContentLoaded', function() {{
+                forceStoneFavicon();
+                removeHfHeader();
+            }});
+        }}
+        window.addEventListener('load', function() {{
+            forceStoneFavicon();
+            removeHfHeader();
+        }});
+
+        // Keep favicon pinned and hide floating HF header against dynamic framework injections
         try {{
             const observer = new MutationObserver(function() {{
                 document.querySelectorAll("link[rel*='icon']").forEach(function(l) {{
@@ -494,9 +524,14 @@ FAVICON_HEAD = f"""
                         l.href = stoneIconUri;
                     }}
                 }});
+                const hf = document.getElementById('huggingface-space-header');
+                if (hf) hf.remove();
             }});
             if (document.head) {{
                 observer.observe(document.head, {{ childList: true, subtree: true }});
+            }}
+            if (document.body) {{
+                observer.observe(document.body, {{ childList: true, subtree: true }});
             }}
         }} catch (e) {{}}
     }})();
