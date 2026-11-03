@@ -2,6 +2,12 @@
   <img src="assets/logo_stone.png" width="180" alt="The Lecturer's Stone Logo" />
 </p>
 
+<p align="center">
+  <a href="https://huggingface.co/spaces/alfndly/lecturers-stone" target="_blank" rel="noopener noreferrer">
+    <img src="https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-sm.svg" alt="Open in Hugging Face Spaces" />
+  </a>
+</p>
+
 # The Lecturer's Stone
 
 AI detector, with metadata checking, and cleansing.
