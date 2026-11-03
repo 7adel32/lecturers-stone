@@ -1,9 +1,10 @@
 """
-The Lecturer's Stone - Interactive Web GUI (Clean Light Theme).
+The Lecturer's Stone - Interactive Web GUI (Clean Light Theme with Unified Radii).
 Default operation evaluates both AI text authorship across multiple detection models
 and container metadata forensics (.docx, .xlsx, .pptx, .pdf).
 """
 
+import html
 import sys
 from pathlib import Path
 import gradio as gr
@@ -18,12 +19,78 @@ from metadata_forensics import inspect_metadata, sanitize_metadata, super_saniti
 
 hub = AICheckerHub()
 
+CUSTOM_CSS = """
+/* Global unified 8px radius across interactive components */
+.gradio-container, .block, .panel, .form, input, textarea, button, select {
+    border-radius: 8px !important;
+}
+
+/* Eliminate double container borders on custom HTML card blocks */
+.clean-html-card {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Service Table Card Container with unified 8px radius */
+.service-table-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    margin-top: 4px;
+}
+
+.service-table-card table {
+    width: 100%;
+    border-collapse: collapse !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 13.5px;
+    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    table-layout: fixed;
+}
+
+.service-table-card th {
+    padding: 12px 16px;
+    font-weight: 600;
+    font-size: 12.5px;
+    color: #475569;
+    background-color: #f8fafc;
+    border: none !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    text-align: left;
+}
+
+.service-table-card td {
+    padding: 12px 16px;
+    border: none !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    color: #1e293b;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.service-table-card tr:last-child td {
+    border-bottom: none !important;
+}
+
+.service-table-card tr:hover td {
+    background-color: #f8fafc;
+}
+"""
+
 
 def format_metadata_html(meta: dict) -> str:
     if not meta or not meta.get("has_metadata"):
         return """
-        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 16px; color: #334155; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-            <div style="font-weight: 600; font-size: 15px; color: #1e293b; margin-bottom: 4px;">Container Metadata Forensics</div>
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; color: #334155; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <div style="font-weight: 600; font-size: 14px; color: #1e293b; margin-bottom: 3px;">Container Metadata Forensics</div>
             <div style="font-size: 13px; color: #64748b;">No container metadata or plain text file.</div>
         </div>
         """
@@ -45,9 +112,9 @@ def format_metadata_html(meta: dict) -> str:
     clues = meta.get("clues", [])
     if clues:
         clues_html = "".join([f"<li style='color: #b91c1c; margin-top: 4px; font-weight: 500;'>[!] {c}</li>" for c in clues])
-        clues_block = f"<ul style='margin: 8px 0 0 18px; padding: 0; font-size: 13px;'>{clues_html}</ul>"
+        clues_block = f"<ul style='margin: 6px 0 0 16px; padding: 0; font-size: 13px;'>{clues_html}</ul>"
     else:
-        clues_block = "<div style='font-size: 13px; color: #64748b; margin-top: 6px;'>None (No automated generator fingerprints detected)</div>"
+        clues_block = "<div style='font-size: 13px; color: #64748b; margin-top: 5px;'>None (No automated generator fingerprints detected)</div>"
 
     created = meta.get("created") or "N/A"
     modified = meta.get("modified") or "N/A"
@@ -62,17 +129,17 @@ def format_metadata_html(meta: dict) -> str:
     authors_str = ", ".join(all_auths) if all_auths else "[None / Stripped]"
 
     return f"""
-    <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 16px; color: #1e293b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
-            <span style="font-weight: 700; font-size: 16px; color: #0f172a;">Metadata Forensics & Container Environment</span>
-            <span style="background-color: {badge_bg}; color: {risk_color}; border: 1px solid {badge_border}; padding: 4px 12px; border-radius: 16px; font-weight: 600; font-size: 12px;">
+    <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin-bottom: 14px; color: #1e293b; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+            <span style="font-weight: 700; font-size: 15px; color: #0f172a;">Metadata Forensics & Container Environment</span>
+            <span style="background-color: {badge_bg}; color: {risk_color}; border: 1px solid {badge_border}; padding: 3px 10px; border-radius: 6px; font-weight: 600; font-size: 12px;">
                 {risk}: {meta.get('verdict')}
             </span>
         </div>
-        <div style="margin-bottom: 12px; font-size: 14px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9;">
+        <div style="margin-bottom: 10px; font-size: 13.5px; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9;">
             <span style="color: #64748b; font-weight: 500;">All Identified Authors / Owners:</span> <b style="color: #0f172a; margin-left: 6px;">{authors_str}</b>
         </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 13px;">
             <div><span style="color: #64748b;">Primary Creator:</span> <b style="color: #334155; margin-left: 4px;">{meta.get('creator') or '[None / Stripped]'}</b></div>
             <div><span style="color: #64748b;">Last Modifier:</span> <b style="color: #334155; margin-left: 4px;">{meta.get('last_modified_by') or '[None / Stripped]'}</b></div>
             <div><span style="color: #64748b;">Application / Tool:</span> <b style="color: #334155; margin-left: 4px;">{app}</b></div>
@@ -80,7 +147,7 @@ def format_metadata_html(meta: dict) -> str:
             <div><span style="color: #64748b;">Created Date:</span> <b style="color: #334155; margin-left: 4px;">{created}</b></div>
             <div><span style="color: #64748b;">Modified Date:</span> <b style="color: #334155; margin-left: 4px;">{modified}</b></div>
         </div>
-        <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid #f1f5f9;">
+        <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid #f1f5f9;">
             <span style="color: #475569; font-size: 13px; font-weight: 600;">Programmatic Clues:</span>
             {clues_block}
         </div>
@@ -141,21 +208,21 @@ def analyze_input(text_input, file_input, services_selected, sapling_key):
         badge_bg = "#dcfce7"
 
     verdict_html = f"""
-    <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 22px; color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-            <span style="font-size: 14px; color: #64748b;">Source: <b style="color: #0f172a;">{source_desc}</b> ({results['document_stats']['words']} words, {results['document_stats']['characters']} chars)</span>
-            <span style="background-color: {badge_bg}; color: {badge_color}; border: 1px solid {badge_color}; padding: 4px 14px; border-radius: 20px; font-weight: 700; font-size: 13px;">
+    <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; color: #0f172a; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span style="font-size: 13.5px; color: #64748b;">Source: <b style="color: #0f172a;">{source_desc}</b> ({results['document_stats']['words']} words, {results['document_stats']['characters']} chars)</span>
+            <span style="background-color: {badge_bg}; color: {badge_color}; border: 1px solid {badge_color}; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 12.5px;">
                 {verdict}
             </span>
         </div>
-        <div style="display: flex; align-items: baseline; gap: 14px;">
-            <h2 style="margin: 0; font-size: 42px; font-weight: 800; color: {badge_color};">{consensus_pct}%</h2>
-            <span style="font-size: 18px; color: #475569; font-weight: 500;">Consensus AI Probability</span>
+        <div style="display: flex; align-items: baseline; gap: 12px;">
+            <h2 style="margin: 0; font-size: 38px; font-weight: 800; color: {badge_color};">{consensus_pct}%</h2>
+            <span style="font-size: 16px; color: #475569; font-weight: 500;">Consensus AI Probability</span>
         </div>
-        <div style="margin-top: 14px; background: #f1f5f9; border-radius: 8px; height: 12px; overflow: hidden; border: 1px solid #e2e8f0;">
-            <div style="background: {badge_color}; height: 100%; width: {consensus_pct}%;"></div>
+        <div style="margin-top: 12px; background: #f1f5f9; border-radius: 6px; height: 10px; overflow: hidden; border: 1px solid #e2e8f0;">
+            <div style="background: {badge_color}; height: 100%; width: {consensus_pct}%; border-radius: 5px;"></div>
         </div>
-        <div style="display: flex; justify-content: space-between; margin-top: 12px; font-size: 13px; color: #64748b;">
+        <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 12.5px; color: #64748b;">
             <span>Consensus: <b style="color: #0f172a;">{ai_votes} AI</b> vs <b style="color: #0f172a;">{human_votes} Human</b> (out of {total_valid} engines)</span>
             <span>Spread: <b style="color: #0f172a;">{results['score_spread']['min']*100:.1f}%</b> - <b style="color: #0f172a;">{results['score_spread']['max']*100:.1f}%</b></span>
         </div>
@@ -176,29 +243,36 @@ def analyze_input(text_input, file_input, services_selected, sapling_key):
         if status == "success" and prob is not None:
             service_scores[s_name] = prob
             pct_val = f"{prob * 100:.1f}%"
-            badge = f"<span style='color: {'#dc2626' if prob >= 0.5 else '#16a34a'}; font-weight: 700;'>{label}</span>"
+            badge = f"<span style='background-color: {'#fee2e2' if prob >= 0.5 else '#dcfce7'}; color: {'#dc2626' if prob >= 0.5 else '#16a34a'}; border: 1px solid {'#fca5a5' if prob >= 0.5 else '#86efac'}; padding: 2px 8px; border-radius: 6px; font-weight: 600; font-size: 11.5px; display: inline-block;'>{label}</span>"
         else:
             pct_val = "N/A"
-            badge = f"<span style='color: #94a3b8;'>{status}</span>"
+            escaped_status = html.escape(str(status))
+            badge = f"<span style='background-color: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; padding: 2px 8px; border-radius: 6px; font-weight: 500; font-size: 11.5px; display: inline-block;' title='{escaped_status}'>Unavailable</span>"
 
         table_rows.append(f"""
-        <tr style="border-bottom: 1px solid #f1f5f9;">
-            <td style="padding: 12px 14px; color: #0f172a;"><b>{s_name}</b></td>
-            <td style="padding: 12px 14px;">{badge}</td>
-            <td style="padding: 12px 14px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; color: #334155;">{pct_val}</td>
-            <td style="padding: 12px 14px; color: #64748b;">{lat}s</td>
+        <tr>
+            <td style="color: #0f172a; font-weight: 600;">{s_name}</td>
+            <td>{badge}</td>
+            <td style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; color: #334155;">{pct_val}</td>
+            <td style="color: #64748b;">{lat}s</td>
         </tr>
         """)
 
     table_html = f"""
-    <div style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-top: 12px; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-        <table style="width: 100%; border-collapse: separate; border-spacing: 0; color: #0f172a; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+    <div class="service-table-card">
+        <table>
+            <colgroup>
+                <col style="width: 38%;">
+                <col style="width: 28%;">
+                <col style="width: 20%;">
+                <col style="width: 14%;">
+            </colgroup>
             <thead>
-                <tr style="text-align: left; background-color: #f8fafc; color: #475569;">
-                    <th style="padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #e2e8f0;">Service Name</th>
-                    <th style="padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #e2e8f0;">Verdict</th>
-                    <th style="padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #e2e8f0;">AI Confidence</th>
-                    <th style="padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #e2e8f0;">Latency</th>
+                <tr>
+                    <th>Service Name</th>
+                    <th>Verdict</th>
+                    <th>AI Confidence</th>
+                    <th>Latency</th>
                 </tr>
             </thead>
             <tbody>
@@ -234,15 +308,24 @@ def create_ui():
         primary_hue="blue",
         secondary_hue="slate",
         neutral_hue="slate",
-        font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui", "sans-serif"]
+        font=[gr.themes.GoogleFont("Inter"), "ui-sans-serif", "system-ui", "sans-serif"],
+        radius_size=gr.themes.sizes.radius_sm
     ).set(
         body_background_fill="#f8fafc",
         block_background_fill="#ffffff",
         block_border_color="#e2e8f0",
-        block_shadow="0 1px 3px rgba(0,0,0,0.04)"
+        block_shadow="0 1px 3px rgba(0,0,0,0.04)",
+        block_radius="8px",
+        container_radius="8px",
+        input_radius="8px",
+        button_large_radius="8px",
+        button_medium_radius="8px",
+        button_small_radius="8px",
+        checkbox_border_radius="4px",
+        table_radius="8px"
     )
 
-    with gr.Blocks(title="The Lecturer's Stone", theme=light_theme) as demo:
+    with gr.Blocks(title="The Lecturer's Stone", theme=light_theme, css=CUSTOM_CSS) as demo:
         gr.Markdown(
             """
             # The Lecturer's Stone
@@ -292,10 +375,10 @@ def create_ui():
                     clear_btn = gr.ClearButton([text_input, file_input], value="Clear Input")
 
             with gr.Column(scale=6):
-                verdict_output = gr.HTML(label="Consensus Verdict")
-                meta_output = gr.HTML(label="Metadata Forensics")
+                verdict_output = gr.HTML(show_label=False, elem_classes=["clean-html-card"])
+                meta_output = gr.HTML(show_label=False, elem_classes=["clean-html-card"])
                 scores_chart = gr.Label(label="AI Detection Probabilities by Engine", num_top_classes=6)
-                breakdown_table = gr.HTML(label="Detailed Service Breakdown")
+                breakdown_table = gr.HTML(show_label=False, elem_classes=["clean-html-card"])
 
                 with gr.Accordion("Extracted Document Content Preview", open=False):
                     text_preview = gr.Textbox(label="Extracted Text", lines=6, interactive=False)
