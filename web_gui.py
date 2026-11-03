@@ -744,8 +744,8 @@ def create_ui():
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--stone-card-border);">
         <div>
             <h1 style="margin: 0; font-size: 28px; font-weight: 800; color: var(--stone-text-main); letter-spacing: -0.02em;">The Lecturer's Stone</h1>
-            <div class="stone-subtitle">Multi-Service AI Content Detection, Container Metadata Forensics, and Cleanser</div>
-            <div style="font-size: 13px; color: var(--stone-text-muted); margin-top: 4px;">Evaluates both text authorship probability across independent models and container <b>metadata forensics</b> (.docx, .xlsx, .pptx, .pdf).</div>
+            <div class="stone-subtitle">AI detector, with metadata checking, and cleansing</div>
+            <div style="font-size: 13px; color: var(--stone-text-muted); margin-top: 4px;">check probability of being AI written with a number of independant models and check metadata for usual AI tells.</div>
         </div>
         <div id="stone-toggle-wrap" onclick="window.toggleStoneTheme && window.toggleStoneTheme()" style="flex-shrink: 0; margin-left: 20px; cursor: pointer; user-select: none;">
             {logo_html}
