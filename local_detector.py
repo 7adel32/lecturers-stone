@@ -2,7 +2,7 @@
 Local AI Detection Engine using desklib/ai-text-detector-v1.01.
 Architecture: Fine-tuned microsoft/deberta-v3-large with mean pooling head.
 Ranked #1 on the RAID AI Detection Benchmark.
-Runs directly on local NVIDIA GPU (RTX 5070 Ti) via CUDA or CPU fallback.
+Runs directly on local GPU via CUDA or CPU fallback (optional).
 """
 
 import time
@@ -111,7 +111,7 @@ class LocalDebertaDetector:
         Analyze text using local GPU model.
         For documents longer than chunk_size words, breaks into overlapping chunks and computes aggregate probability.
         """
-        service_name = "Local Desklib DeBERTa (ZeroGPU / A10G)" if os.environ.get("SPACE_ID") else "Local Desklib DeBERTa (RTX 5070 Ti / CUDA)"
+        service_name = "Local Desklib DeBERTa (ZeroGPU / A10G)" if os.environ.get("SPACE_ID") else "Local Desklib DeBERTa (CUDA / GPU)"
         start_time = time.time()
         clean_text = text.strip()
         if not clean_text:

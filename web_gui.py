@@ -780,7 +780,7 @@ def analyze_input(text_input, file_input, services_selected):
     meta_html = format_metadata_html(meta_info)
 
     name_map = {
-        "Local Desklib DeBERTa (RTX 5070 Ti / CUDA)": "Local Desklib DeBERTa",
+        "Local Desklib DeBERTa (CUDA / GPU)": "Local Desklib DeBERTa",
         "Local Desklib DeBERTa (ZeroGPU / A10G)": "Local Desklib DeBERTa",
         "TrustSafeAI RADAR (Adversarial Detector)": "TrustSafeAI RADAR",
         "SzegedAI (DeBERTa AI Detector)": "SzegedAI DeBERTa",
@@ -929,7 +929,7 @@ def create_ui():
         if is_hf:
             deberta_label = "DeBERTa Model (Consumes HF ZeroGPU Quota/Credits)"
         else:
-            deberta_label = "Local Desklib DeBERTa (RTX 5070 Ti / CUDA)"
+            deberta_label = "Local Desklib DeBERTa (CUDA / GPU)"
         service_choices.append((deberta_label, "local_deberta"))
 
     service_choices.extend([
@@ -942,7 +942,7 @@ def create_ui():
 
     # On Hugging Face Space: default is fast CPU-only (zero quota consumption)
     # but DeBERTa is available as an opt-in checkbox with quota warning!
-    # On local PC: default includes local DeBERTa (runs on RTX 5070 Ti in 0.05s)
+    # On local PC: default includes local DeBERTa if installed (CUDA / CPU)
     if is_hf:
         service_defaults = ["radar", "fakespot", "yugamj", "piratexx", "heuristic"]
     else:
