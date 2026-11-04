@@ -28,14 +28,14 @@ The Lecturer's Stone checks both **File Metadata** and **Multiple AI Detectors**
 ### 1. Metadata & File Details
 - **Author Discovery**: Finds all original authors, last modifiers, comment authors, and contributors across Word, Excel, PowerPoint, and PDF files.
 - **Usual AI & Script Tells**: Flags known library signatures including:
-  - PptxGenJS, python-pptx (PowerPoint generators & default 2013 date)
-  - openpyxl, XlsxWriter, SheetJS / xlsx, ExcelJS (Excel generators)
-  - python-docx, docx.js, docx4j (Word document generators & default 2013 date)
-  - ReportLab, pyFPDF, FPDF2, WeasyPrint, wkhtmltopdf, jsPDF, PDFKit, orb, pypdf (PDF generators)
-  - Chromium / Skia / Headless Chrome / Puppeteer / Playwright (Browser-printed PDFs)
-  - Apache POI, EPPlus, PhpSpreadsheet, Typst (Multi-platform Office generators)
-  - Common AI model tags (ChatGPT, GPT-4, Claude, Anthropic, Gemini, DeepSeek, Copilot, Ollama, etc.)
-  - AI presentation & writing tools (Gamma, Tome, Beautiful.ai, SlidesAI, Decktopus, PopAI, Plus AI, Canva, SciSpace, Jenni AI, Notion, etc.)
+  - `PptxGenJS`, `python-pptx` (PowerPoint generators & default 2013 date)
+  - `openpyxl`, `XlsxWriter`, `SheetJS / xlsx`, `ExcelJS` (Excel generators)
+  - `python-docx`, `docx.js`, `docx4j` (Word document generators & default 2013 date)
+  - `ReportLab`, `pyFPDF`, `FPDF2`, `WeasyPrint`, `wkhtmltopdf`, `jsPDF`, `PDFKit`, `borb`, `pypdf` (PDF generators)
+  - `Chromium / Skia / Headless Chrome / Puppeteer / Playwright` (Browser-printed PDFs)
+  - `Apache POI`, `EPPlus`, `PhpSpreadsheet`, `Typst` (Multi-platform Office generators)
+  - Common AI model tags (`ChatGPT`, `GPT-4`, `Claude`, `Anthropic`, `Gemini`, `DeepSeek`, `Copilot`, `Ollama`, etc.)
+  - AI presentation & writing tools (`Gamma`, `Tome`, `Beautiful.ai`, `SlidesAI`, `Decktopus`, `PopAI`, `Plus AI`, `Canva`, `SciSpace`, `Jenni AI`, `Notion`, etc.)
 - **Editing Time**: Flags files saved with 0 minutes of editing or only 1 revision.
 
 ### 2. AI Content Detectors
@@ -150,6 +150,32 @@ Features:
 
 ---
 
+## Hermes Agent Automation
+
+The repository includes a Hermes Agent automation script under `integrations/hermes/aicheck.py`. Hermes is a good way to automate this for 24/7 background monitoring, recurring folder checks, or receiving instant analysis reports via messaging channels (such as WhatsApp).
+
+### Running via Hermes CLI
+
+```bash
+# Evaluate document text and metadata
+python3 integrations/hermes/aicheck.py -f "path/to/document.docx"
+
+# Fast metadata check only (0.1s, skips AI models)
+python3 integrations/hermes/aicheck.py -f "path/to/document.pptx" --skip-ai
+
+# Clean document metadata and preserve creation date
+python3 integrations/hermes/aicheck.py -f "draft.docx" --cleanse "cleaned.docx" --author "Author Name"
+
+# Check raw text string
+python3 integrations/hermes/aicheck.py "Paste text to evaluate..."
+```
+
+### Background Monitoring & Notifications
+
+You can leverage Hermes cron jobs (`hermes cron`) to automatically monitor submission folders and deliver concise summaries to your notification channels without manual intervention.
+
+---
+
 ## Project Structure
 
 ```text
@@ -162,6 +188,9 @@ lecturers-stone/
 ├── local_detector.py     # Local DeBERTa GPU model runner (CUDA / CPU)
 ├── heuristic_engine.py   # Burstiness & sentence variation engine
 ├── document_parser.py    # Document text parser (DOCX, XLSX, PPTX, PDF, TXT)
+├── integrations/
+│   └── hermes/
+│       └── aicheck.py    # Hermes Agent automation & notification script
 ├── requirements.txt      # Project dependencies
 ├── LICENSE               # MIT License
 ├── .env.example          # Sample environment configuration
