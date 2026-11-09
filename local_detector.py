@@ -9,9 +9,6 @@ import time
 import math
 import os
 from typing import Dict, Any, List, Optional
-import torch
-import torch.nn as nn
-from transformers import AutoTokenizer, AutoConfig, AutoModel, PreTrainedModel
 
 try:
     import spaces
@@ -25,44 +22,76 @@ except ImportError:
             return wrapper
     spaces = _MockSpaces()
 
-class DesklibAIDetectionModel(PreTrainedModel):
-    config_class = AutoConfig
-    _tied_weights_keys = []
+torch = None
+nn = None
+AutoTokenizer = None
+AutoConfig = None
+AutoModel = None
+PreTrainedModel = None
+DesklibAIDetectionModel = None
 
-    def __init__(self, config):
-        super().__init__(config)
-        self.model = AutoModel.from_config(config)
-        self.classifier = nn.Linear(config.hidden_size, 1)
-        self.init_weights()
+def _init_torch_modules():
+    """Lazily import torch and transformers, and define the Desklib model class."""
+    global torch, nn, AutoTokenizer, AutoConfig, AutoModel, PreTrainedModel, DesklibAIDetectionModel
+    if torch is not None and DesklibAIDetectionModel is not None:
+        return
 
-    @property
-    def all_tied_weights_keys(self):
-        return {}
+    import torch as _torch
+    import torch.nn as _nn
+    from transformers import (
+        AutoTokenizer as _AutoTokenizer,
+        AutoConfig as _AutoConfig,
+        AutoModel as _AutoModel,
+        PreTrainedModel as _PreTrainedModel,
+    )
 
-    def forward(self, input_ids, attention_mask=None, labels=None):
-        outputs = self.model(input_ids, attention_mask=attention_mask)
-        last_hidden_state = outputs[0]
-        # Mean pooling
-        input_mask_expanded = attention_mask.unsqueeze(-1).expand(last_hidden_state.size()).float()
-        sum_embeddings = torch.sum(last_hidden_state * input_mask_expanded, dim=1)
-        sum_mask = torch.clamp(input_mask_expanded.sum(dim=1), min=1e-9)
-        pooled_output = sum_embeddings / sum_mask
+    class _DesklibAIDetectionModel(_PreTrainedModel):
+        config_class = _AutoConfig
+        _tied_weights_keys = []
 
-        logits = self.classifier(pooled_output)
-        loss = None
-        if labels is not None:
-            loss_fct = nn.BCEWithLogitsLoss()
-            loss = loss_fct(logits.view(-1), labels.float())
+        def __init__(self, config):
+            super().__init__(config)
+            self.model = _AutoModel.from_config(config)
+            self.classifier = _nn.Linear(config.hidden_size, 1)
+            self.init_weights()
 
-        output = {"logits": logits}
-        if loss is not None:
-            output["loss"] = loss
-        return output
+        @property
+        def all_tied_weights_keys(self):
+            return {}
+
+        def forward(self, input_ids, attention_mask=None, labels=None):
+            outputs = self.model(input_ids, attention_mask=attention_mask)
+            last_hidden_state = outputs[0]
+            # Mean pooling
+            input_mask_expanded = attention_mask.unsqueeze(-1).expand(last_hidden_state.size()).float()
+            sum_embeddings = _torch.sum(last_hidden_state * input_mask_expanded, dim=1)
+            sum_mask = _torch.clamp(input_mask_expanded.sum(dim=1), min=1e-9)
+            pooled_output = sum_embeddings / sum_mask
+
+            logits = self.classifier(pooled_output)
+            loss = None
+            if labels is not None:
+                loss_fct = _nn.BCEWithLogitsLoss()
+                loss = loss_fct(logits.view(-1), labels.float())
+
+            output = {"logits": logits}
+            if loss is not None:
+                output["loss"] = loss
+            return output
+
+    torch = _torch
+    nn = _nn
+    AutoTokenizer = _AutoTokenizer
+    AutoConfig = _AutoConfig
+    AutoModel = _AutoModel
+    PreTrainedModel = _PreTrainedModel
+    DesklibAIDetectionModel = _DesklibAIDetectionModel
 
 class LocalDebertaDetector:
     _instance = None
 
     def __init__(self, model_name: str = "desklib/ai-text-detector-v1.01", device: Optional[str] = None):
+        _init_torch_modules()
         if device is None:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         else:
@@ -181,7 +210,13 @@ class LocalDebertaDetector:
 _GLOBAL_DETECTOR: Optional[LocalDebertaDetector] = None
 
 def is_local_available() -> bool:
-    """Check if local DeBERTa model weights are present in local Hugging Face cache or running on HF Space."""
+    """Check if PyTorch/Transformers dependencies and local DeBERTa model weights are present."""
+    try:
+        import torch  # noqa: F401
+        import transformers  # noqa: F401
+    except ImportError:
+        return False
+
     try:
         if os.environ.get("SPACE_ID"):
             return True

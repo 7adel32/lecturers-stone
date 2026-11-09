@@ -940,13 +940,9 @@ def create_ui():
         ("Heuristic & Burstiness Engine (Offline)", "heuristic")
     ])
 
-    # On Hugging Face Space: default is fast CPU-only (zero quota consumption)
-    # but DeBERTa is available as an opt-in checkbox with quota warning!
-    # On local PC: default includes local DeBERTa if installed (CUDA / CPU)
-    if is_hf:
-        service_defaults = ["radar", "fakespot", "yugamj", "piratexx", "heuristic"]
-    else:
-        service_defaults = [val for _, val in service_choices]
+    # Online and offline statistical models are active by default.
+    # Local DeBERTa is optional and opt-in so local models don't load without being selected.
+    service_defaults = ["radar", "fakespot", "yugamj", "piratexx", "heuristic"]
 
     with gr.Blocks(title="The Lecturer's Stone") as demo:
         gr.HTML(header_html)

@@ -24,7 +24,6 @@ except ImportError:
     Client = None
 
 from heuristic_engine import analyze_heuristic
-from local_detector import get_local_detector
 from document_parser import extract_text_from_file
 from metadata_forensics import inspect_metadata
 
@@ -47,6 +46,15 @@ class AICheckerHub:
             }
 
         try:
+            from local_detector import get_local_detector, is_local_available
+            if not is_local_available():
+                return {
+                    "service_name": "Local Desklib DeBERTa",
+                    "ai_probability": None,
+                    "label": "Not Available",
+                    "status": "local model dependencies or cached weights not found",
+                    "latency_sec": 0.0
+                }
             detector = get_local_detector()
             return detector.analyze_text(text)
         except Exception as e:
@@ -266,7 +274,13 @@ class AICheckerHub:
         if services:
             runners_to_use = {k: v for k, v in all_runners.items() if k in services}
         else:
-            runners_to_use = all_runners
+            # Local model is optional: only include it in default set if enable_local and available
+            from local_detector import is_local_available
+            has_local = self.enable_local and is_local_available()
+            runners_to_use = {
+                k: v for k, v in all_runners.items()
+                if k != "local_deberta" or has_local
+            }
 
         results = []
         with ThreadPoolExecutor(max_workers=len(runners_to_use)) as executor:
