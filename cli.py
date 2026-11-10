@@ -95,7 +95,12 @@ def main():
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("-t", "--text", type=str, help="Plain text string to analyze.")
-    group.add_argument("-f", "--file", type=str, help="Path to document file (.txt, .md, .pdf, .docx, .xlsx, .pptx).")
+    group.add_argument(
+        "-f", "--file", "--files",
+        dest="files",
+        nargs="+",
+        help="Path(s) to document file(s), directory, or glob pattern (.txt, .md, .pdf, .docx, .xlsx, .pptx)."
+    )
 
     # Metadata & Cleansing Options
     parser.add_argument("--cleanse", "--sanitize", dest="cleanse", nargs="?", const="", default=None, metavar="OUT_PATH",
@@ -112,67 +117,190 @@ def main():
 
     args = parser.parse_args()
 
-    meta_info = None
-    action_note = None
+    # Collect files if provided
+    SUPPORTED_EXTENSIONS = {
+        ".txt", ".md", ".markdown", ".rtf", ".rst", ".py", ".json", ".csv",
+        ".pdf", ".docx", ".doc", ".pptx", ".ppt", ".xlsx", ".xlsm", ".xltx"
+    }
 
-    if args.file:
-        file_path = Path(args.file)
-        if not file_path.is_file():
-            print(f"Error: File not found: '{file_path}'", file=sys.stderr)
+    if args.files:
+        collected_paths = []
+        for item in args.files:
+            p = Path(item)
+            if p.is_file():
+                collected_paths.append(p)
+            elif p.is_dir():
+                for f in sorted(p.iterdir()):
+                    if f.is_file() and f.suffix.lower() in SUPPORTED_EXTENSIONS and not f.name.startswith("~$") and not f.name.startswith("."):
+                        collected_paths.append(f)
+            else:
+                # Try glob expansion
+                import glob
+                matched = glob.glob(item)
+                if matched:
+                    for m in sorted(matched):
+                        mp = Path(m)
+                        if mp.is_file() and mp.suffix.lower() in SUPPORTED_EXTENSIONS:
+                            collected_paths.append(mp)
+                else:
+                    print(f"Error: File or path not found: '{item}'", file=sys.stderr)
+                    sys.exit(1)
+
+        if not collected_paths:
+            print("Error: No supported document files found to process.", file=sys.stderr)
             sys.exit(1)
 
-        source_name = file_path.name
-        ext = file_path.suffix.lower()
+        is_batch = len(collected_paths) > 1
+        reports = []
 
-        if ext in [".docx", ".xlsx", ".xlsm", ".pptx", ".pdf"]:
+        from checker_hub import AICheckerHub
+        hub = None if args.skip_ai else AICheckerHub()
+
+        for idx, file_path in enumerate(collected_paths, 1):
+            source_name = file_path.name
+            ext = file_path.suffix.lower()
+            meta_info = None
+            action_note = None
+
+            if ext in [".docx", ".xlsx", ".xlsm", ".pptx", ".pdf"]:
+                try:
+                    meta_info = inspect_metadata(file_path)
+                except Exception as e:
+                    meta_info = {"error": f"Failed to inspect metadata: {e}"}
+
+            # Document Cleansing
+            if args.cleanse is not None:
+                if is_batch:
+                    # In batch mode, if out_target is a directory, place cleansed files inside;
+                    # otherwise default to <stem>_cleansed<ext> alongside original.
+                    if args.cleanse and Path(args.cleanse).is_dir():
+                        out_target = Path(args.cleanse) / f"{file_path.stem}_cleansed{file_path.suffix}"
+                    else:
+                        out_target = file_path.parent / f"{file_path.stem}_cleansed{file_path.suffix}"
+                else:
+                    out_target = Path(args.cleanse) if args.cleanse else None
+
+                try:
+                    saved_to = cleanse_metadata(file_path, output_path=out_target, author=args.author, keep_created_date=True)
+                    action_note = f"Cleansed file written to: {saved_to} (Author: {args.author}, Old creation date preserved)"
+                except Exception as e:
+                    action_note = f"Error during metadata cleansing: {e}"
+
+            if args.skip_ai:
+                file_report = {
+                    "source": source_name,
+                    "file_path": str(file_path.resolve()),
+                    "metadata_forensics": meta_info,
+                    "action": action_note
+                }
+                reports.append(file_report)
+                if not args.json:
+                    if meta_info:
+                        print_metadata_section(meta_info, action_note=action_note)
+                    elif action_note:
+                        print(f"[{source_name}] {action_note}")
+                continue
+
             try:
-                meta_info = inspect_metadata(file_path)
+                text = extract_text_from_file(file_path)
             except Exception as e:
-                meta_info = {"error": f"Failed to inspect metadata: {e}"}
+                err_msg = f"Error extracting text from file '{file_path}': {e}"
+                if is_batch:
+                    print(err_msg, file=sys.stderr)
+                    reports.append({
+                        "source": source_name,
+                        "file_path": str(file_path.resolve()),
+                        "error": err_msg,
+                        "metadata_forensics": meta_info,
+                        "action": action_note
+                    })
+                    continue
+                else:
+                    print(err_msg, file=sys.stderr)
+                    sys.exit(1)
 
-        # Document Cleansing
-        if args.cleanse is not None:
-            out_target = Path(args.cleanse) if args.cleanse else None
-            try:
-                saved_to = cleanse_metadata(file_path, output_path=out_target, author=args.author, keep_created_date=True)
-                action_note = f"Cleansed file written to: {saved_to} (Author: {args.author}, Old creation date preserved)"
-            except Exception as e:
-                action_note = f"Error during metadata cleansing: {e}"
+            if not text.strip():
+                empty_msg = f"Warning: Input text in '{file_path.name}' is empty."
+                if is_batch:
+                    print(empty_msg, file=sys.stderr)
+                    reports.append({
+                        "source": source_name,
+                        "file_path": str(file_path.resolve()),
+                        "warning": "Empty document text",
+                        "metadata_forensics": meta_info,
+                        "action": action_note
+                    })
+                    continue
+                else:
+                    print(f"Error: Input text is empty.", file=sys.stderr)
+                    sys.exit(1)
 
-        if args.skip-ai if hasattr(args, "skip-ai") else args.skip_ai:
-            if args.json:
-                res = {"source": source_name, "metadata_forensics": meta_info, "action": action_note}
-                print(json.dumps(res, indent=2))
-            else:
+            results = hub.analyze_text(text, services=args.services)
+            results["source"] = source_name
+            results["file_path"] = str(file_path.resolve())
+            if meta_info:
+                results["metadata_forensics"] = meta_info
+            if action_note:
+                results["action"] = action_note
+
+            reports.append(results)
+
+            if not args.json:
+                if is_batch:
+                    print(f"\n>>> Processing ({idx}/{len(collected_paths)}): {source_name}")
                 if meta_info:
                     print_metadata_section(meta_info, action_note=action_note)
-                elif action_note:
-                    print(action_note)
-            return
 
-        try:
-            text = extract_text_from_file(file_path)
-        except Exception as e:
-            print(f"Error extracting text from file '{file_path}': {e}", file=sys.stderr)
-            sys.exit(1)
+                print("\n" + "=" * 64)
+                print(" THE LECTURER'S STONE - AI CONTENT CONSENSUS REPORT")
+                print("=" * 64)
+                print(f"Source:        {source_name}")
+                print(f"Document Size: {results['document_stats']['words']} words | {results['document_stats']['characters']} characters")
+                print("-" * 64)
+                print(f"VERDICT:       {results['verdict'].upper()}")
+                score_str = format_color_bar(results['consensus_ai_probability']) if results['consensus_ai_probability'] is not None else "N/A"
+                print(f"AI SCORE:      {score_str}")
+                print(f"SERVICE VOTES: {results['votes']['ai']} AI vs {results['votes']['human']} Human (out of {results['votes']['total_valid_services']} active services)")
+                print(f"SCORE RANGE:   {results['score_spread']['min'] * 100:.1f}% to {results['score_spread']['max'] * 100:.1f}% (Spread: {results['score_spread']['range'] * 100:.1f}%)")
+                print("-" * 64)
+                print("INDIVIDUAL SERVICE BREAKDOWN:")
+                for s in results["services"]:
+                    s_name = s.get("service_name")
+                    status = s.get("status")
+                    prob = s.get("ai_probability")
+                    label = s.get("label")
+                    lat = s.get("latency_sec", 0.0)
+                    if status == "success" and prob is not None:
+                        bar = format_color_bar(prob, length=15)
+                        print(f" * {s_name:<36} {bar} | {label} ({lat}s)")
+                    else:
+                        print(f" * {s_name:<36} [STATUS: {status}] ({lat}s)")
+                print("=" * 64 + "\n")
 
-    else:
-        source_name = "Raw Text Input"
-        text = args.text
+        # Output handling for files (single vs batch)
+        final_output = reports if is_batch else reports[0]
+        if args.json:
+            output_data = json.dumps(final_output, indent=2)
+            print(output_data)
 
+        if args.export:
+            export_path = Path(args.export)
+            export_path.write_text(json.dumps(final_output, indent=2), encoding="utf-8")
+            print(f"Report saved to {export_path.resolve()}", file=sys.stderr)
+
+        return
+
+    # Plain text branch
+    source_name = "Raw Text Input"
+    text = args.text
     if not text.strip():
         print("Error: Input text is empty.", file=sys.stderr)
         sys.exit(1)
 
-    # Run AI content detection hub
     from checker_hub import AICheckerHub
     hub = AICheckerHub()
     results = hub.analyze_text(text, services=args.services)
     results["source"] = source_name
-    if meta_info:
-        results["metadata_forensics"] = meta_info
-    if action_note:
-        results["action"] = action_note
 
     if args.json:
         output_data = json.dumps(results, indent=2)
@@ -182,10 +310,6 @@ def main():
             print(f"\nReport exported to {args.export}", file=sys.stderr)
         return
 
-    # Print Metadata Forensics Section first
-    if meta_info:
-        print_metadata_section(meta_info, action_note=action_note)
-
     # Formatted terminal report for AI detection
     print("\n" + "=" * 64)
     print(" THE LECTURER'S STONE - AI CONTENT CONSENSUS REPORT")
@@ -194,7 +318,8 @@ def main():
     print(f"Document Size: {results['document_stats']['words']} words | {results['document_stats']['characters']} characters")
     print("-" * 64)
     print(f"VERDICT:       {results['verdict'].upper()}")
-    print(f"AI SCORE:      {format_color_bar(results['consensus_ai_probability'])}")
+    score_str = format_color_bar(results['consensus_ai_probability']) if results['consensus_ai_probability'] is not None else "N/A"
+    print(f"AI SCORE:      {score_str}")
     print(f"SERVICE VOTES: {results['votes']['ai']} AI vs {results['votes']['human']} Human (out of {results['votes']['total_valid_services']} active services)")
     print(f"SCORE RANGE:   {results['score_spread']['min'] * 100:.1f}% to {results['score_spread']['max'] * 100:.1f}% (Spread: {results['score_spread']['range'] * 100:.1f}%)")
     print("-" * 64)
@@ -216,7 +341,7 @@ def main():
     if args.export:
         export_path = Path(args.export)
         export_path.write_text(json.dumps(results, indent=2), encoding="utf-8")
-        print(f"Report saved to {export_path.resolve()}")
+        print(f"Report saved to {export_path.resolve()}", file=sys.stderr)
 
 
 if __name__ == "__main__":

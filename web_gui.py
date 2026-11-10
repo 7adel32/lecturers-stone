@@ -683,46 +683,13 @@ def _run_zerogpu_analysis(content: str, services: list):
 def _run_cpu_analysis(content: str, services: list):
     return hub.analyze_text(content, services=services)
 
-def analyze_input(text_input, file_input, services_selected):
-    meta_info = None
-    if file_input is not None:
-        file_path = file_input.name if hasattr(file_input, "name") else str(file_input)
-        path_obj = Path(file_path)
-        try:
-            content = extract_text_from_file(path_obj)
-            source_desc = f"File: {path_obj.name}"
-            if path_obj.suffix.lower() in [".docx", ".xlsx", ".xlsm", ".pptx", ".pdf"]:
-                meta_info = inspect_metadata(path_obj)
-        except Exception as e:
-            return (
-                f"<div style='color:#dc2626; font-weight:bold;'>Error reading file: {e}</div>",
-                "",
-                ""
-            )
-    elif text_input and text_input.strip():
-        content = text_input.strip()
-        source_desc = "Direct Text Input"
-    else:
-        return (
-            "<div style='color:#d97706; font-weight:bold;'>Please enter text or upload a document (.docx, .xlsx, .pptx, .pdf, .txt).</div>",
-            "",
-            ""
-        )
-
-    import os
-    is_hf = bool(os.environ.get("SPACE_ID"))
-    use_gpu = is_hf and ("local_deberta" in (services_selected or []))
-
-    if use_gpu:
-        results = _run_zerogpu_analysis(content, services=services_selected)
-    else:
-        results = _run_cpu_analysis(content, services=services_selected)
-
-    consensus_pct = results["consensus_percentage"]
-    verdict = results["verdict"]
-    ai_votes = results["votes"]["ai"]
-    human_votes = results["votes"]["human"]
-    total_valid = results["votes"]["total_valid_services"]
+def render_single_doc_result(results: dict, meta_info: dict, source_desc: str) -> tuple:
+    consensus_pct = results.get("consensus_percentage", 0.0)
+    verdict = results.get("verdict", "Unknown")
+    votes = results.get("votes", {})
+    ai_votes = votes.get("ai", 0)
+    human_votes = votes.get("human", 0)
+    total_valid = votes.get("total_valid_services", 0)
 
     if total_valid == 0:
         badge_color = "#64748b"
@@ -749,12 +716,13 @@ def analyze_input(text_input, file_input, services_selected):
         consensus_summary = f"Consensus: <b style='color: var(--stone-text-main);'>{ai_votes} AI</b> vs <b style='color: var(--stone-text-main);'>{human_votes} Human</b> (out of {total_valid} engines)"
         spread_summary = f"Spread: <b style='color: var(--stone-text-main);'>{results['score_spread']['min']*100:.1f}%</b> - <b style='color: var(--stone-text-main);'>{results['score_spread']['max']*100:.1f}%</b>"
 
+    doc_stats = results.get("document_stats", {"words": 0, "characters": 0})
     verdict_html = f"""
     <div class="verdict-card" style="padding: 20px; margin-bottom: 14px;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 12px;">
             <div style="min-width: 0; flex: 1;">
                 <span style="font-size: 13px; color: var(--stone-text-muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{html.escape(source_desc)}">
-                    Source: <b style="color: var(--stone-text-main);">{html.escape(source_desc)}</b> ({results['document_stats']['words']} words, {results['document_stats']['characters']} chars)
+                    Source: <b style="color: var(--stone-text-main);">{html.escape(source_desc)}</b> ({doc_stats['words']} words, {doc_stats['characters']} chars)
                 </span>
             </div>
             <div style="flex-shrink: 0; white-space: nowrap;">
@@ -791,7 +759,7 @@ def analyze_input(text_input, file_input, services_selected):
     }
 
     table_rows = []
-    for s in results["services"]:
+    for s in results.get("services", []):
         s_name = s.get("service_name", "Service")
         prob = s.get("ai_probability")
         status = s.get("status")
@@ -799,7 +767,6 @@ def analyze_input(text_input, file_input, services_selected):
         label = s.get("label", "Unknown")
         display_name = name_map.get(s_name, s_name)
 
-        # Exclude empty/none, insufficient text, and non-running services
         if status == "success" and prob is not None and label not in ["Empty Input", "Empty / None", "Empty", "None", "No Extractable Text", "Insufficient Text", "Insufficient Text (< 10 words)"]:
             pct_val = f"{prob * 100:.1f}%"
             badge_text_color = "#ef4444" if prob >= 0.5 else "var(--stone-safe-color, #e4e4e7)"
@@ -849,13 +816,164 @@ def analyze_input(text_input, file_input, services_selected):
     return verdict_html, meta_html, table_html
 
 
+def analyze_input(text_input, file_input, services_selected):
+    # Normalize files to list
+    files = []
+    if file_input is not None:
+        if isinstance(file_input, list):
+            files = file_input
+        else:
+            files = [file_input]
+
+    if files:
+        import os
+        is_hf = bool(os.environ.get("SPACE_ID"))
+        use_gpu = is_hf and ("local_deberta" in (services_selected or []))
+
+        # Check if single file
+        if len(files) == 1:
+            f = files[0]
+            file_path = f.name if hasattr(f, "name") else str(f)
+            path_obj = Path(file_path)
+            meta_info = None
+            try:
+                content = extract_text_from_file(path_obj)
+                source_desc = f"File: {path_obj.name}"
+                if path_obj.suffix.lower() in [".docx", ".xlsx", ".xlsm", ".pptx", ".pdf"]:
+                    meta_info = inspect_metadata(path_obj)
+            except Exception as e:
+                return (
+                    f"<div style='color:#dc2626; font-weight:bold;'>Error reading file '{path_obj.name}': {e}</div>",
+                    "",
+                    ""
+                )
+
+            if use_gpu:
+                results = _run_zerogpu_analysis(content, services=services_selected)
+            else:
+                results = _run_cpu_analysis(content, services=services_selected)
+
+            return render_single_doc_result(results, meta_info, source_desc)
+
+        # Batch Mode: Process each file
+        batch_cards = []
+        batch_meta = []
+        batch_tables = []
+
+        summary_rows = []
+        for idx, f in enumerate(files, 1):
+            file_path = f.name if hasattr(f, "name") else str(f)
+            path_obj = Path(file_path)
+            meta_info = None
+            try:
+                content = extract_text_from_file(path_obj)
+                source_desc = f"{path_obj.name} ({idx}/{len(files)})"
+                if path_obj.suffix.lower() in [".docx", ".xlsx", ".xlsm", ".pptx", ".pdf"]:
+                    meta_info = inspect_metadata(path_obj)
+            except Exception as e:
+                summary_rows.append(f"<tr><td>{html.escape(path_obj.name)}</td><td style='color:#dc2626;'>Error: {e}</td><td>-</td><td>-</td></tr>")
+                continue
+
+            if use_gpu:
+                results = _run_zerogpu_analysis(content, services=services_selected)
+            else:
+                results = _run_cpu_analysis(content, services=services_selected)
+
+            v_html, m_html, t_html = render_single_doc_result(results, meta_info, source_desc)
+            batch_cards.append(v_html)
+            batch_meta.append(m_html)
+            batch_tables.append(t_html)
+
+            # Row for summary
+            score = results.get("consensus_percentage", 0.0)
+            score_color = "#dc2626" if score >= 70 else ("#ea580c" if score >= 50 else ("#ca8a04" if score >= 35 else "#10b981"))
+            summary_rows.append(f"""
+            <tr>
+                <td style="font-weight: 600; color: var(--stone-text-main);">{html.escape(path_obj.name)}</td>
+                <td><span style="border: 1px solid {score_color}; color: {score_color}; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600;">{results.get('verdict', 'N/A')}</span></td>
+                <td style="font-weight: 700; color: {score_color}; text-align: right;">{score:.1f}%</td>
+                <td style="color: var(--stone-text-muted); text-align: right;">{results.get('document_stats', {}).get('words', 0)} words</td>
+            </tr>
+            """)
+
+        overview_html = f"""
+        <div class="verdict-card" style="padding: 20px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid var(--stone-divider); padding-bottom: 8px;">
+                <span style="font-weight: 700; font-size: 16px; color: var(--stone-text-main);">Batch Analysis Overview ({len(files)} Documents)</span>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr style="text-align: left; color: var(--stone-text-muted); border-bottom: 1px solid var(--stone-divider);">
+                        <th style="padding: 6px 0;">Document</th>
+                        <th>Verdict</th>
+                        <th style="text-align: right;">AI Score</th>
+                        <th style="text-align: right;">Words</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {"".join(summary_rows)}
+                </tbody>
+            </table>
+        </div>
+        """ + "".join(batch_cards)
+
+        return overview_html, "".join(batch_meta), "".join(batch_tables)
+
+    elif text_input and text_input.strip():
+        content = text_input.strip()
+        source_desc = "Direct Text Input"
+        meta_info = None
+
+        import os
+        is_hf = bool(os.environ.get("SPACE_ID"))
+        use_gpu = is_hf and ("local_deberta" in (services_selected or []))
+
+        if use_gpu:
+            results = _run_zerogpu_analysis(content, services=services_selected)
+        else:
+            results = _run_cpu_analysis(content, services=services_selected)
+
+        return render_single_doc_result(results, meta_info, source_desc)
+
+    else:
+        return (
+            "<div style='color:#d97706; font-weight:bold;'>Please enter text or upload document(s) (.docx, .xlsx, .pptx, .pdf, .txt, .md).</div>",
+            "",
+            ""
+        )
+
+
 def cleanse_action(file_input, author_name):
     if file_input is None:
         return None, "No file uploaded to cleanse."
-    file_path = file_input.name if hasattr(file_input, "name") else str(file_input)
+
+    files = file_input if isinstance(file_input, list) else [file_input]
     author = author_name if author_name and author_name.strip() else DEFAULT_AUTHOR
-    out_file = cleanse_metadata(file_path, author=author, keep_created_date=True)
-    return out_file, f"Cleansed: Author set to '{author}', original creation date preserved."
+
+    if len(files) == 1:
+        f = files[0]
+        file_path = f.name if hasattr(f, "name") else str(f)
+        try:
+            out_file = cleanse_metadata(file_path, author=author, keep_created_date=True)
+            return [out_file], f"Cleansed {Path(file_path).name}: Author set to '{author}', original creation date preserved."
+        except Exception as e:
+            return None, f"Error cleansing file: {e}"
+
+    # Batch cleanse multiple files
+    cleansed_files = []
+    messages = []
+    for f in files:
+        file_path = f.name if hasattr(f, "name") else str(f)
+        p = Path(file_path)
+        try:
+            out_file = cleanse_metadata(file_path, author=author, keep_created_date=True)
+            cleansed_files.append(out_file)
+            messages.append(f"✓ Cleansed: {p.name}")
+        except Exception as e:
+            messages.append(f"✗ Failed {p.name}: {e}")
+
+    summary = f"Processed {len(cleansed_files)}/{len(files)} files.\n" + "\n".join(messages)
+    return cleansed_files, summary
 
 
 def create_ui():
@@ -940,8 +1058,6 @@ def create_ui():
         ("Heuristic & Burstiness Engine (Offline)", "heuristic")
     ])
 
-    # Online and offline statistical models are active by default.
-    # Local DeBERTa is optional and opt-in so local models don't load without being selected.
     service_defaults = ["radar", "fakespot", "yugamj", "piratexx", "heuristic"]
 
     with gr.Blocks(title="The Lecturer's Stone") as demo:
@@ -950,9 +1066,9 @@ def create_ui():
         with gr.Row():
             with gr.Column(scale=1):
                 file_input = gr.File(
-                    label="Upload Document (.docx, .xlsx, .pptx, .pdf, .txt, .md)",
+                    label="Upload Document(s) (.docx, .xlsx, .pptx, .pdf, .txt, .md)",
                     file_types=[".docx", ".xlsx", ".xlsm", ".pptx", ".pdf", ".txt", ".md"],
-                    file_count="single"
+                    file_count="multiple"
                 )
                 text_input = gr.Textbox(
                     label="Or Enter Plain Text String",
@@ -967,7 +1083,7 @@ def create_ui():
                         placeholder="e.g. Author or Student"
                     )
                     cleanse_btn = gr.Button("Cleanse Document Metadata (Preserve Date)", variant="secondary")
-                    cleaned_file_output = gr.File(label="Download Cleansed Document", interactive=False)
+                    cleaned_file_output = gr.File(label="Download Cleansed Document(s)", file_count="multiple", interactive=False)
                     action_status = gr.Markdown("")
 
                 with gr.Accordion("Engine Selection & Settings", open=False):
@@ -986,9 +1102,9 @@ def create_ui():
                 meta_output = gr.HTML(show_label=False, elem_classes=["clean-html-card"])
                 breakdown_table = gr.HTML(show_label=False, elem_classes=["clean-html-card"])
 
-        def handle_file_change(file):
-            if file is not None:
-                return gr.update(interactive=False, placeholder="File uploaded. Text input is disabled while document is loaded. Click 'Clear Input' to type text.")
+        def handle_file_change(files):
+            if files:
+                return gr.update(interactive=False, placeholder="Document(s) loaded. Text input is disabled while documents are loaded. Click 'Clear Input' to type text.")
             return gr.update(interactive=True, placeholder="Paste an essay, article, paragraph, or sentence to evaluate for AI authorship...")
 
         def handle_clear():
@@ -1034,6 +1150,7 @@ def create_ui():
         _probe_btn.click(fn=_run_zerogpu_analysis)
 
     return demo, light_theme, CUSTOM_CSS, HEAD_SCRIPT
+
 
 
 if __name__ == "__main__":

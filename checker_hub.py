@@ -363,3 +363,27 @@ class AICheckerHub:
             report["metadata_forensics"] = inspect_metadata(path)
 
         return report
+
+    def analyze_files(self, file_paths: List[Union[str, Path]], services: List[str] = None, check_metadata: bool = True) -> List[Dict[str, Any]]:
+        """Analyze a batch of documents of different formats and return structured results for each."""
+        batch_results = []
+        for fp in file_paths:
+            path = Path(fp)
+            try:
+                report = self.analyze_file(path, services=services, check_metadata=check_metadata)
+            except Exception as e:
+                meta = None
+                if check_metadata and path.is_file():
+                    try:
+                        meta = inspect_metadata(path)
+                    except Exception:
+                        pass
+                report = {
+                    "source": path.name,
+                    "file_path": str(path.resolve()) if path.exists() else str(path),
+                    "error": str(e),
+                    "metadata_forensics": meta
+                }
+            batch_results.append(report)
+        return batch_results
+

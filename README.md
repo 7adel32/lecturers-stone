@@ -94,29 +94,39 @@ LECTURERS_STONE_AUTHOR="Your Name"
 Checks metadata tells and runs all text detectors:
 
 ```powershell
-# Word Document
+# Single Word, PDF, Spreadsheet, or Presentation Document
 python cli.py -f "path\to\document.docx"
-
-# PDF Document
 python cli.py -f "path\to\document.pdf"
-
-# Spreadsheet or Presentation
 python cli.py -f "path\to\sheet.xlsx"
 python cli.py -f "path\to\slides.pptx"
+
+# Batch Documents (Mix of different types, directories, or glob patterns)
+python cli.py -f "doc1.docx" "sheet.xlsx" "slides.pptx" "paper.pdf" "notes.md"
+python cli.py -f "submissions_folder/"
+python cli.py -f "documents/*.docx" "documents/*.pdf"
 ```
 
 ### 2. Fast Metadata Check Only (Skip AI Models)
 
-Checks file metadata and script tells in under 0.2 seconds:
+Checks file metadata and script tells across single files or batches in under 0.2 seconds:
 
 ```powershell
 python cli.py -f "path\to\document.docx" --skip-ai
+
+# Batch metadata forensics
+python cli.py -f "submissions/" --skip-ai
 ```
 
 ### 3. Clean Document Metadata (Keep Original Date)
 
+Cleanses metadata for single documents or entire batches:
+
 ```powershell
+# Single document
 python cli.py -f "draft.docx" --cleanse "submission.docx" --skip-ai
+
+# Batch cleansing (writes cleansed files into output directory)
+python cli.py -f "drafts/" --cleanse "cleaned_submissions/" --author "Your Name" --skip-ai
 ```
 
 ### 4. Check Plain Text
@@ -129,6 +139,9 @@ python cli.py -t "Paste essay or article text here..."
 
 ```powershell
 python cli.py -f "document.docx" --json --export "report.json"
+
+# Batch export for multiple files
+python cli.py -f "submissions/" --json --export "batch_report.json"
 ```
 
 ---
@@ -143,10 +156,10 @@ python app.py
 
 Features:
 - Click the Stone logo to toggle Dark / Light mode.
-- Drag-and-drop document upload (`.docx`, `.xlsx`, `.pptx`, `.pdf`, `.txt`, `.md`).
+- Drag-and-drop single or multiple document uploads (`.docx`, `.xlsx`, `.pptx`, `.pdf`, `.txt`, `.md`) with batch summary overview.
 - Overall AI probability bar and individual detector breakdowns.
 - Metadata details showing found authors, timestamps, and generator tells.
-- One-click button to download cleaned documents directly.
+- One-click button to cleanse metadata and download cleansed document batches.
 
 ---
 
@@ -157,11 +170,12 @@ The repository includes a Hermes Agent automation script under `integrations/her
 ### Running via Hermes CLI
 
 ```bash
-# Evaluate document text and metadata
+# Evaluate document text and metadata (single or batch)
 python3 integrations/hermes/aicheck.py -f "path/to/document.docx"
+python3 integrations/hermes/aicheck.py -f "doc1.docx" "sheet.xlsx" "slides.pptx" "paper.pdf"
 
 # Fast metadata check only (0.1s, skips AI models)
-python3 integrations/hermes/aicheck.py -f "path/to/document.pptx" --skip-ai
+python3 integrations/hermes/aicheck.py -f "submissions/" --skip-ai
 
 # Clean document metadata and preserve creation date
 python3 integrations/hermes/aicheck.py -f "draft.docx" --cleanse "cleaned.docx" --author "Author Name"
