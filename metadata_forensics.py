@@ -556,6 +556,8 @@ sanitize_metadata = cleanse_metadata
 
 
 def _clean_core_xml(xml_bytes: bytes, author: Optional[str], created_iso: Optional[str]) -> bytes:
+    for prefix, uri in NS.items():
+        ET.register_namespace(prefix, uri)
     root = ET.fromstring(xml_bytes)
 
     target_author = author or DEFAULT_AUTHOR
@@ -572,10 +574,14 @@ def _clean_core_xml(xml_bytes: bytes, author: Optional[str], created_iso: Option
             elem.text = final_created
         elif tag == "modified":
             elem.text = final_created
+        elif tag == "title":
+            if elem.text and ("python-pptx" in elem.text.lower() or "python-docx" in elem.text.lower()):
+                elem.text = ""
         elif tag in ["description", "keywords", "category", "contentStatus"]:
-            root.remove(elem)
+            elem.text = ""
         elif tag == "revision":
-            elem.text = "3"
+            if not elem.text or elem.text in ["1", "0"]:
+                elem.text = "3"
 
     # Ensure dc:creator exists
     creator_tag = f"{{{NS['dc']}}}creator"
@@ -593,6 +599,9 @@ def _clean_core_xml(xml_bytes: bytes, author: Optional[str], created_iso: Option
 
 
 def _clean_app_xml(xml_bytes: bytes, app_name: str) -> bytes:
+    for prefix, uri in NS.items():
+        ET.register_namespace(prefix, uri)
+    ET.register_namespace("", NS["ep"])
     root = ET.fromstring(xml_bytes)
     found_app = False
     found_ver = False
@@ -601,7 +610,7 @@ def _clean_app_xml(xml_bytes: bytes, app_name: str) -> bytes:
     for elem in list(root):
         tag = elem.tag.split("}")[-1]
         if tag in ["Company", "Manager"]:
-            root.remove(elem)
+            elem.text = ""
         elif tag == "Application":
             elem.text = app_name
             found_app = True
@@ -609,20 +618,12 @@ def _clean_app_xml(xml_bytes: bytes, app_name: str) -> bytes:
             elem.text = "16.0000"
             found_ver = True
         elif tag == "TotalTime":
-            elem.text = "45"
+            if not elem.text or elem.text in ["0", "1"]:
+                elem.text = "45"
             found_time = True
 
-    ep_ns = NS["ep"]
-    if not found_app:
-        app_el = ET.SubElement(root, f"{{{ep_ns}}}Application")
-        app_el.text = app_name
-    if not found_ver:
-        ver_el = ET.SubElement(root, f"{{{ep_ns}}}AppVersion")
-        ver_el.text = "16.0000"
-    if not found_time:
-        time_el = ET.SubElement(root, f"{{{ep_ns}}}TotalTime")
-        time_el.text = "45"
-
+    # Note: Do NOT append new elements to docProps/app.xml because OpenXML extended-properties
+    # uses a strict xsd:all / sequence schema where out-of-order elements trigger repair dialogs in PowerPoint/Word.
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
 
 
@@ -639,26 +640,45 @@ def _cleanse_ooxml(
 ):
     ext = src.suffix.lower()
     if ext == ".docx":
-        app_name = "Microsoft Word"
+        app_name = "Microsoft Office Word"
     elif ext in [".xlsx", ".xlsm"]:
         app_name = "Microsoft Excel"
     elif ext == ".pptx":
-        app_name = "Microsoft PowerPoint"
+        app_name = "Microsoft Office PowerPoint"
     else:
         app_name = "Microsoft Office"
 
-    created_iso = old_created if (keep_created and old_created) else None
+    # Never keep default hardcoded library epoch timestamps
+    if old_created and any(ep in str(old_created) for ep in ["2013-12-23", "2013-01-27", "1970-01-01", "1601-01-01"]):
+        created_iso = None
+    else:
+        created_iso = old_created if (keep_created and old_created) else None
 
-    with zipfile.ZipFile(src, "r") as zin, zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as zout:
-        for item in zin.infolist():
-            data = zin.read(item.filename)
-            if item.filename == "docProps/core.xml":
-                data = _clean_core_xml(data, author=author, created_iso=created_iso)
-            elif item.filename == "docProps/app.xml":
-                data = _clean_app_xml(data, app_name=app_name)
-            elif item.filename == "docProps/custom.xml":
-                data = _clean_custom_xml()
-            zout.writestr(item, data)
+    # Use a temporary file if src and target are the same path
+    import tempfile, shutil
+    same_file = (src.resolve() == target.resolve())
+    out_path = Path(tempfile.mktemp(suffix=ext, dir=str(target.parent))) if same_file else target
+
+    try:
+        with zipfile.ZipFile(src, "r") as zin, zipfile.ZipFile(out_path, "w", compression=zipfile.ZIP_DEFLATED) as zout:
+            for item in zin.infolist():
+                data = zin.read(item.filename)
+                if item.filename == "docProps/core.xml":
+                    data = _clean_core_xml(data, author=author, created_iso=created_iso)
+                elif item.filename == "docProps/app.xml":
+                    data = _clean_app_xml(data, app_name=app_name)
+                elif item.filename == "docProps/custom.xml":
+                    data = _clean_custom_xml()
+                # Preserve exact compression type per entry (e.g. STORED for media/thumbnails, DEFLATED for XML)
+                zout.writestr(item.filename, data, compress_type=item.compress_type)
+        if same_file:
+            shutil.move(str(out_path), str(target))
+    finally:
+        if same_file and out_path.exists():
+            try:
+                out_path.unlink()
+            except Exception:
+                pass
 
 
 def _cleanse_pdf(
@@ -671,13 +691,17 @@ def _cleanse_pdf(
     if pymupdf is None:
         raise RuntimeError("PyMuPDF is required for PDF metadata cleansing")
 
+    import tempfile, shutil
+    same_file = (src.resolve() == target.resolve())
+    out_path = Path(tempfile.mktemp(suffix=".pdf", dir=str(target.parent))) if same_file else target
+
     doc = pymupdf.open(str(src))
     target_author = author or DEFAULT_AUTHOR
-    cdate = old_created if (keep_created and old_created) else "D:20240115120000Z"
+    cdate = old_created if (keep_created and old_created) else "D:20261108120000Z"
     doc.set_metadata({
         "author": target_author,
         "creator": "Microsoft Word",
-        "producer": "Microsoft Word for Windows",
+        "producer": "Microsoft Word",
         "title": "",
         "subject": "",
         "keywords": "",
@@ -686,5 +710,7 @@ def _cleanse_pdf(
     })
     doc.del_xml_metadata()
 
-    doc.save(str(target), garbage=4, clean=True, deflate=True)
+    doc.save(str(out_path), garbage=4, clean=True, deflate=True)
     doc.close()
+    if same_file:
+        shutil.move(str(out_path), str(target))
