@@ -160,6 +160,27 @@ Features:
 - Overall AI probability bar and individual detector breakdowns.
 - Metadata details showing found authors, timestamps, and generator tells.
 - One-click button to cleanse metadata and download cleansed document batches.
+- Side-by-Side Word Diff (`.docx`) generator with inline word-level highlights (runs on CPU).
+
+---
+
+## Side-by-Side Word Diff & Optional Local Humanizer
+
+`humanizer.py` provides two standalone utilities:
+
+1. **Side-by-Side Word Diff (`compare`, CPU-only)**:
+   Generates a landscape 2-column comparison `.docx` (`*_SideBySide.docx`) with inline word-level highlights (red strikethrough = deleted, green underline = added):
+
+   ```powershell
+   python humanizer.py compare -orig "report.docx" -rev "report_revised.docx" -o "report_SideBySide.docx"
+   ```
+
+2. **Optional Local Text Humanizer (`humanize`, requires local Ollama + GPU)**:
+   Rewrites `.docx` paragraphs into third-person academic prose via a local Ollama server (`http://localhost:11434`, `Smaug-Humanizer`) while preserving native Word OMML math (`<m:oMath>`). This is **not** enabled by default in the Web GUI or CLI:
+
+   ```powershell
+   python humanizer.py humanize -i "report.docx" -o "report_humanized.docx"
+   ```
 
 ---
 
@@ -201,6 +222,7 @@ lecturers-stone/
 ├── metadata_forensics.py # Metadata inspector, clue finder, and cleaner
 ├── local_detector.py     # Local DeBERTa GPU model runner (CUDA / CPU)
 ├── heuristic_engine.py   # Burstiness & sentence variation engine
+├── humanizer.py          # Side-by-side DOCX diff & optional local Ollama humanizer
 ├── document_parser.py    # Document text parser (DOCX, XLSX, PPTX, PDF, TXT)
 ├── integrations/
 │   └── hermes/

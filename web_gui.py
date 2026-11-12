@@ -976,6 +976,20 @@ def cleanse_action(file_input, author_name):
     return cleansed_files, summary
 
 
+def compare_docx_action(orig_file, rev_file):
+    if orig_file is None or rev_file is None:
+        return None, "Please upload both an original `.docx` and a revised `.docx` file."
+    orig_path = orig_file.name if hasattr(orig_file, "name") else str(orig_file)
+    rev_path = rev_file.name if hasattr(rev_file, "name") else str(rev_file)
+    try:
+        from humanizer import generate_side_by_side_docx
+        out_path = str(Path(orig_path).with_name(f"{Path(orig_path).stem}_SideBySide.docx"))
+        generate_side_by_side_docx(orig_path, rev_path, out_path)
+        return out_path, f"Generated side-by-side diff: `{Path(out_path).name}`"
+    except Exception as e:
+        return None, f"Error generating side-by-side diff: {e}"
+
+
 def create_ui():
     light_theme = gr.themes.Default(
         primary_hue="blue",
@@ -1086,6 +1100,13 @@ def create_ui():
                     cleaned_file_output = gr.File(label="Download Cleansed Document(s)", file_count="multiple", interactive=False)
                     action_status = gr.Markdown("")
 
+                with gr.Accordion("Side-by-Side Word Diff (DOCX)", open=False):
+                    orig_docx_input = gr.File(label="Original .docx", file_types=[".docx"])
+                    rev_docx_input = gr.File(label="Revised .docx", file_types=[".docx"])
+                    compare_btn = gr.Button("Generate Side-by-Side Diff", variant="secondary")
+                    compare_file_output = gr.File(label="Download Side-by-Side Diff (.docx)", interactive=False)
+                    compare_status = gr.Markdown("")
+
                 with gr.Accordion("Engine Selection & Settings", open=False):
                     services_checkbox = gr.CheckboxGroup(
                         choices=service_choices,
@@ -1143,6 +1164,12 @@ def create_ui():
             fn=cleanse_action,
             inputs=[file_input, author_name_input],
             outputs=[cleaned_file_output, action_status]
+        )
+
+        compare_btn.click(
+            fn=compare_docx_action,
+            inputs=[orig_docx_input, rev_docx_input],
+            outputs=[compare_file_output, compare_status]
         )
 
         # Bind _run_zerogpu_analysis to hidden probe button to satisfy ZeroGPU startup scan
